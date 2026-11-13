@@ -29,6 +29,9 @@ function absatzText(p){
     else geh(c); } };
   geh(p); return t;
 }
+/** Steht ein Element in der Änderungsgeschichte (gelöscht, verschoben, frühere Format- oder Abschnittsangaben)? Dann zeigt Word es nicht. */
+const HISTORIE = new Set(['del', 'moveFrom', 'sectPrChange', 'pPrChange', 'rPrChange', 'tblPrChange', 'trPrChange', 'tcPrChange']);
+const inHistorie = e => { for (let x = e.parentNode; x && x.nodeType === 1; x = x.parentNode) if (HISTORIE.has(x.localName)) return true; return false; };
 const istUeberschrift = (text, p) => {
   const t = text.trim();
   if (p && [...p.getElementsByTagName('*')].some(e => e.localName === 'outlineLvl')) return t.length > 0 && t.length <= 90;
@@ -82,10 +85,10 @@ async function benutzteKopfzeilen(bytes, documentXml, alle, verweis = 'headerRef
   // je Abschnitt (sectPr in Dokumentreihenfolge): fehlt eine Variante, gilt die des vorigen Abschnitts (Word erbt sie)
   const attr = (e, n) => ([...e.attributes].find(a => a.localName === n) || {}).value;
   const rid = e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value;
-  const alleRefs = [...doc.getElementsByTagNameNS('*', verweis)];
+  const alleRefs = [...doc.getElementsByTagNameNS('*', verweis)].filter(e => !inHistorie(e));   // frühere Abschnittsangaben (sectPrChange) zählen nicht (Codex, PR #1)
   if (alleRefs.some(e => !rid(e))) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
   const geerbt = {}, ids = [];
-  for (const sp of doc.getElementsByTagNameNS('*', 'sectPr')){
+  for (const sp of [...doc.getElementsByTagNameNS('*', 'sectPr')].filter(e => !inHistorie(e))){
     for (const e of [...sp.childNodes].filter(c => c.nodeType === 1 && c.localName === verweis)) geerbt[attr(e, 'type') || 'default'] = rid(e);
     const titel = an([...sp.childNodes].find(c => c.nodeType === 1 && c.localName === 'titlePg'));
     if (geerbt.default) ids.push(geerbt.default);
@@ -120,7 +123,7 @@ async function docxLesen(bytes){
   for (const [datei, el, ref, art] of [['word/footnotes.xml', 'footnote', 'footnoteReference', 'Fußnote'], ['word/endnotes.xml', 'endnote', 'endnoteReference', 'Endnote']]){
     if (!teile[datei]) continue;
     const idVon = e => ([...e.attributes].find(a => a.localName === 'id') || {}).value;
-    const ids = new Set([...dokXml.getElementsByTagNameNS('*', ref)].map(idVon).filter(Boolean)); if (!ids.size) continue;
+    const ids = new Set([...dokXml.getElementsByTagNameNS('*', ref)].filter(e => !inHistorie(e)).map(idVon).filter(Boolean)); if (!ids.size) continue;   // gelöschte/verschobene Verweise zählen nicht (Codex, PR #1)
     for (const b of teilBloecke(teile[datei], 'kopf', segs, w => [...w.childNodes].filter(c => c.nodeType === 1 && c.localName === el && ids.has(idVon(c)) && ![...c.attributes].some(a => a.localName === 'type'))))
       { b.kopf = art; bloecke.push(b); } }
   bloecke.push(...fuss);   // Fußzeilen am Ende

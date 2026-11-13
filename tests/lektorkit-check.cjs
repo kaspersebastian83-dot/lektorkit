@@ -409,6 +409,14 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     z7['word/document.xml'] = Buffer.from(z7['word/document.xml'].toString().replace('<w:t xml:space="preserve">Text</w:t></w:r>', '<w:t xml:space="preserve">Text</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r>'));
     z7['word/footnotes.xml'] = Buffer.from('<?xml version="1.0"?><w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:t>TR-2025-00000</w:t></w:r></w:p></w:footnote><w:footnote w:id="1"><w:p><w:r><w:t>Siehe Projekt 99.9001</w:t></w:r></w:p></w:footnote><w:footnote w:id="2"><w:p><w:r><w:t>verwaist VW-2025-55555</w:t></w:r></w:p></w:footnote></w:footnotes>');
     const k7 = await lies(z7); assert.match(k7, /Siehe Projekt 99\.9001/); assert.doesNotMatch(k7, /TR-2025|VW-2025/);
+    // Verweis auf Fußnote 2 nur noch in gelöschtem Text, frühere Abschnittsangaben (sectPrChange) mit anderer Kopfzeile: beides nicht gelesen
+    z7['word/document.xml'] = Buffer.from(z7['word/document.xml'].toString().replace('<w:footnoteReference w:id="1"/></w:r>', '<w:footnoteReference w:id="1"/></w:r><w:del w:id="5" w:author="x"><w:r><w:footnoteReference w:id="2"/></w:r></w:del>'));
+    assert.doesNotMatch(await lies(z7), /VW-2025/);
+    const z11 = zipLesen(zipSchreiben(z2));
+    z11['word/document.xml'] = Buffer.from(z11['word/document.xml'].toString().replace('</w:sectPr>', '<w:sectPrChange w:id="6" w:author="x"><w:sectPr><w:headerReference w:type="default" r:id="rId9"/></w:sectPr></w:sectPrChange></w:sectPr>'));
+    z11['word/_rels/document.xml.rels'] = Buffer.from(z11['word/_rels/document.xml.rels'].toString().replace('</Relationships>', '<Relationship Id="rId9" Type="x" Target="header3.xml"/></Relationships>'));
+    z11['word/header3.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'HI-2025-66666'));
+    const k11 = await lies(z11); assert.match(k11, /AB-2025-11111/); assert.doesNotMatch(k11, /HI-2025-66666/);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
