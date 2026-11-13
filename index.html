@@ -1011,7 +1011,7 @@ const VERSION = '1.0.0';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
-    schreibt Labor-Nr. damit) und weiches Trennzeichen wie in Word. Gelöschter Text (Änderungen nachverfolgen), Feldbefehle und
+    schreibt Labor-Nr. damit) und weiches Trennzeichen wie in Word. Gelöschter und verschobener Alttext (Änderungen nachverfolgen: del, moveFrom), Feldbefehle und
     Textfelder zählen nicht. Geschütztes Leerzeichen → Leerzeichen (gleiche Länge, Positionen bleiben). */
 function absatzText(p){
   let t = '';
@@ -1020,7 +1020,7 @@ function absatzText(p){
     else if (ln === 'tab') t += '\t';
     else if (ln === 'br' || ln === 'cr') t += '\n';
     else if (ln === 'noBreakHyphen') t += '-';
-    else if (ln === 'softHyphen' || ln === 'pPr' || ln === 'rPr' || ln === 'del' || ln === 'delText' || ln === 'instrText' || ln === 'txbxContent' || ln === 'fldSimple' && false) {}
+    else if (ln === 'softHyphen' || ln === 'pPr' || ln === 'rPr' || ln === 'del' || ln === 'moveFrom' || ln === 'delText' || ln === 'instrText' || ln === 'txbxContent' || ln === 'fldSimple' && false) {}
     else geh(c); } };
   geh(p); return t;
 }
@@ -1104,6 +1104,7 @@ const EINHEIT = String.raw`[µμ]g\s?\/\s?100\s?cm(?:²|2)|[µμ]g\s?\/\s?cm(?:�
 const ZAHL = String.raw`\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?`;
 // Ergebnis wie im Prüfbericht: Zahl (auch mit „<“/„>“) oder „n. n.“ / „unter BG“ – dieselben Formen wie A.ergebnis (Codex, PR #1)
 const WERT_RE = new RegExp(String.raw`(?<![\p{L}\d.,\-\/])(?:(<|>)\s*)?(${ZAHL}|n\.\s?n\.|unter\s+BG)\s?(${EINHEIT})`, 'gu');
+const SPANNE_VOR = new RegExp(String.raw`\d(?:\s?(?:${EINHEIT}))?\s*(?:bis|–|—|-)\s*$`, 'u');
 const PRUEF_EINHEIT = /^(?:[µμ]g\/100cm2|[µμ]g\/cm2|mg\/m2|[µμ]g\/m2|ng\/m2|mg\/kg|M\.?-%)$/i;
 const einheitKurz = u => tidy(u).replace(/μ/g, 'µ').replace(/²/g, '2').replace(/\s+/g, '');
 const PROBEN_RE = /(?<![\p{L}\d])(\p{L}*?[Pp]roben?)\s+(\d{1,4}(?:\s*(?:,|und|bis|sowie)\s*\d{1,4})*)(?![\d]|,\d)/gu;
@@ -1365,6 +1366,11 @@ function analysieren(doc, d){
       for (const m of satz.matchAll(WERT_RE)){
         const von = sz.von + m.index, bis = von + m[0].length; if (!frei(seg, von, bis)) continue;
         const roh = (m[1] ? m[1] + ' ' : '') + m[2], u = m[3];
+        // Spanne („zwischen 4,1 und 12,3 µg/cm²“, „5 bis 10 µg/cm²“, „4,1–12,3 µg/cm²“): Grenzen sind keine Messwerte (Codex, PR #1)
+        const vorT = text.slice(sz.von, von), nachT = text.slice(bis);
+        const obereGrenze = /(?:zwischen|von)\s+[<>]?\s*[\d.,]+[^\d]{0,14}?\s*(?:und|bis)\s*$/i.test(vorT) || SPANNE_VOR.test(vorT);
+        const untereGrenze = /^\s*(?:bis|–|—|-)\s*[<>]?\s*\d/.test(nachT) || /(?:zwischen|von)\s*$/i.test(vorT) && /^\s*(?:und|bis)\s*[<>]?\s*\d/.test(nachT);
+        if (obereGrenze || untereGrenze){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Grenze einer Spanne – Spannen werden nicht geprüft.' }); continue; }
         if (bg && !inTab){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Brandgeruch-Prüfung – keine Laborwerte.' }); continue; }
         const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4}))/u.exec(nach);
         // folgt nach der Nummer eine weitere Probe („, Probe 2“, „, 2“, „P2“, „und“, „bis“, „sowie“, „/“), ist die Zuordnung nicht eindeutig

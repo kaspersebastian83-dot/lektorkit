@@ -403,6 +403,15 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const k5 = await page.evaluate(() => { const doc = { bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht ABC-1-2-30 und ABC-1-2-31.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] };
       return LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], pdfNamen: ['ABC-1-2-300.pdf', 'Bericht ABC-1-2-31.pdf'], messungen: [] }).marken.map(m => m.text + ':' + m.status); });
     assert.deepEqual(k5, ['ABC-1-2-30:ohne', 'ABC-1-2-31:belegt']);
+    // Spannen sind keine Messwerte; verschobener Alttext (moveFrom) zählt nicht
+    const sp = await page.evaluate(() => { const seg = t => ({ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' });
+      const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12,3', q: 'gemessen', v: 12.3, bericht: 'AR-1' }], berichte: [] };
+      return ['Die Werte liegen zwischen 4,1 und 12,3 µg/cm² in Probe 1.', 'In Probe 1 wurden 4,1–12,3 µg/cm² gemessen.', 'In Probe 1 wurden 4,1 µg/cm² bis 12,3 µg/cm² gemessen.', 'In Probe 1 wurden 12,3 µg/cm² gemessen.']
+        .map(t => LektorKern.analysieren({ bloecke: [], segs: [seg(t)] }, d).marken.filter(m => m.art === 'wert').map(m => m.text + ':' + m.status).join(' ')); });
+    assert.deepEqual(sp, ['12,3 µg/cm²:ohne', '12,3 µg/cm²:ohne', '4,1 µg/cm²:ohne 12,3 µg/cm²:ohne', '12,3 µg/cm²:belegt']);
+    const mv = await page.evaluate(() => { const x = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:moveFrom><w:r><w:t>alt 99 µg/cm² </w:t></w:r></w:moveFrom><w:moveTo><w:r><w:t>neu 12,3 µg/cm²</w:t></w:r></w:moveTo></w:p>';
+      return LektorKern.absatzText(new DOMParser().parseFromString(x, 'application/xml').documentElement); });
+    assert.equal(mv, 'neu 12,3 µg/cm²');
     // Bericht lesen und währenddessen ein anderes Projekt öffnen: der alte Bericht kommt nicht ins neue Projekt
     const v = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
       await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv);
