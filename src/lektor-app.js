@@ -114,8 +114,7 @@ async function gewolltLesen(dir){
   if (x.version > 1) throw Error(`„${o.pfad}“ stammt von einer neueren LektorKit-Fassung.`);
   return { liste: x.gewollt.filter(g => g && typeof g.schluessel === 'string'), roh: x, text: j.text };
 }
-async function gewolltSchreiben(aendern){
-  const dir = S.dir;
+async function gewolltSchreiben(dir, aendern){
   if (dir.requestPermission && (await dir.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') throw Error('Ohne Schreibrecht kann LektorKit die Bestätigung nicht vermerken.');
   const frisch = await gewolltLesen(dir);   // vor dem Schreiben frisch lesen: Bestätigungen von Kollegen bleiben
   const o = await gewolltOrt(dir, true);
@@ -126,7 +125,7 @@ async function gewolltSchreiben(aendern){
   const text = JSON.stringify(x, null, 2) + '\n', fh = await o.dir.getFileHandle(DATEI, { create: true }), w = await fh.createWritable();
   try{ await w.write(text); await w.close(); }catch(e){ try{ await w.abort(); }catch(_){} throw e; }
   if (await (await fh.getFile()).text() !== text) throw Error('Kontrolle nach dem Speichern fehlgeschlagen – bitte erneut versuchen.');
-  S.gewollt = liste; S.gewolltPfad = o.pfad;
+  return liste;
 }
 async function kuerzelHolen(){
   try{ const k = localStorage.getItem('lektorkit-kuerzel') || localStorage.getItem('spektron-ich'); if (k) return k; }catch(e){}
@@ -146,13 +145,18 @@ async function alsGewollt(id){
   const m = S.erg.marken[id]; if (!m) return;
   const kuerzel = await kuerzelHolen(); if (!kuerzel) return;
   const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: new Date().toISOString().slice(0, 10) };
-  return nacheinander(async () => { try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== eintrag.schluessel).concat([eintrag])); neuAuswerten(); }
-    catch(e){ meldung('Nicht vermerkt: ' + e.message); } });
+  return gebunden(l => l.filter(g => g.schluessel !== eintrag.schluessel).concat([eintrag]), 'Nicht vermerkt: ');
 }
 async function zuruecknehmen(id){
   const m = S.erg.marken[id]; if (!m) return;
   const k = m.schluessel;
-  return nacheinander(async () => { try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== k)); neuAuswerten(); }catch(e){ meldung('Nicht geändert: ' + e.message); } });
+  return gebunden(l => l.filter(g => g.schluessel !== k), 'Nicht geändert: ');
+}
+/** Schreiben in das Projekt, in dem geklickt wurde – auch wenn inzwischen ein anderes geöffnet ist; das Ergebnis erscheint nur dort (Codex, PR #1). */
+function gebunden(aendern, fehlerText){
+  const dir = S.dir, lauf = S.oeffnenLauf;
+  return nacheinander(async () => { try{ const liste = await gewolltSchreiben(dir, aendern); if (lauf === S.oeffnenLauf){ S.gewollt = liste; neuAuswerten(); } }
+    catch(e){ if (lauf === S.oeffnenLauf) meldung(fehlerText + e.message); } });
 }
 
 /* ---------- Ablauf ---------- */
@@ -168,10 +172,10 @@ async function oeffnen(dir, archiv, wunsch){
   const lauf = ++S.oeffnenLauf, veraltet = () => lauf !== S.oeffnenLauf;
   S.andereLauf++; S.lesenLauf++; S.doc = null;
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
-  const daten = await projektLesen(dir); if (veraltet()) return;
+  const daten = await projektLesen(dir); if (veraltet()) return null;
   let gewollt = [], gewolltFehler = '';
   try{ gewollt = (await gewolltLesen(dir)).liste; }catch(e){ gewolltFehler = e.message; }
-  if (veraltet()) return;
+  if (veraltet()) return null;
   S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.daten = daten; S.gewollt = gewollt; S.gewolltFehler = gewolltFehler;
   const pj = S.daten.pj || {};
   $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>${esc([pj.schadennummer ? 'Schaden-Nr. ' + tidy(pj.schadennummer).replace(/\n/g, ', ') : '', pj.zustaendig && pj.zustaendig.kuerzel ? 'Zuständig: ' + pj.zustaendig.kuerzel : ''].filter(Boolean).join(' · '))}</span>`;
@@ -184,8 +188,9 @@ async function oeffnen(dir, archiv, wunsch){
   else S.andereStatus = 'fehlt';
   // Nur den verlangten Bericht lesen – fehlt er, nie still einen anderen (Codex, PR #1)
   if (gefunden) await lesen();
-  else if (wunsch){ S.doc = null; $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt');
+  else if (wunsch && !veraltet()){ S.doc = null; $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt');
     meldung(`Der Bericht „${wunsch}“ liegt nicht in „Mitteilungen“ (umbenannt oder gelöscht?). Bitte unten den richtigen wählen.`); }
+  return veraltet() ? null : lauf;
 }
 async function andereVorbereiten(){
   // Lauf an dieses Projekt binden: öffnet jemand inzwischen ein anderes, wird das Ergebnis verworfen (Codex, PR #1)
@@ -351,7 +356,8 @@ $('btnProjekt').onclick = async () => {
 $('btnLesen').onclick = () => lesen();
 // Neu einlesen: derselbe Bericht – liegt er nicht mehr in „Mitteilungen“, wird nichts anderes gelesen (Codex, PR #1)
 $('btnNeu').onclick = async () => { const d = S.bericht && S.bericht.datei, name = S.bericht && S.bericht.name;
-  await oeffnen(S.dir, S.archiv, d ? '' : 'Mitteilungen/' + name); if (d) await lesen(d); };
+  const lauf = await oeffnen(S.dir, S.archiv, d ? '' : 'Mitteilungen/' + name);
+  if (d && lauf !== null && lauf === S.oeffnenLauf) await lesen(d); };   // abgelegte Datei nur ins selbe, nicht überholte Projekt (Codex, PR #1)
 $('btnAndererBericht').onclick = () => { $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); };
 $('btnDrucken').onclick = () => { protokollBauen(); window.print(); };
 $('btnDatei').onclick = () => $('eingabeDatei').click();

@@ -247,12 +247,13 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
   });
 
   await fall('g', 'zwei Proben, ein Wert → ohne Beleg', async () => {
-    const docx = docxErsetzen(BR1_DOCX, [['Die Ergebnisse sind in Tabelle 1 zusammengefasst.', 'An den Proben 1 und 2 wurden zusammen 16,4 µg/cm² ermittelt. Gemessen wurden 17,4 µg/cm² (Probe 1, Probe 2) und 18,4 µg/cm² in Probe 1 sowie 2. Die Ergebnisse sind in Tabelle 1 zusammengefasst.']]);
+    const docx = docxErsetzen(BR1_DOCX, [['Die Ergebnisse sind in Tabelle 1 zusammengefasst.', 'Probe 2 war n. n. µg/cm². An den Proben 1 und 2 wurden zusammen 16,4 µg/cm² ermittelt. Gemessen wurden 17,4 µg/cm² (Probe 1, Probe 2) und 18,4 µg/cm² in Probe 1 sowie 2. Die Ergebnisse sind in Tabelle 1 zusammengefasst.']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx }), ...archivBasis() }, MA);
     const r = await pruefen(BR1.ordner);
     for (const w of ['16,4 µg/cm²', '17,4 µg/cm²', '18,4 µg/cm²']){ const m = finde(r, 'wert', w);
       assert.equal(m.length, 1, w); assert.equal(m[0].status, 'ohne', w + ' ' + m[0].notiz); assert.match(m[0].notiz, /Mehrere Proben/); }
-    assert.deepEqual(offen(r), [], 'ohne Beleg ist kein Problem:\n' + zeig(r)); assert.equal(r.kopf, 'Keine Abweichung gefunden');
+    const nn = finde(r, 'wert', 'n. n. µg/cm²'); assert.equal(nn.length, 1); assert.equal(nn[0].status, 'abweicht', 'n. n. bei P2 (4,1 im Prüfbericht) – im Fließtext erkannt'); assert.equal(nn[0].probe, 'P2');
+    assert.deepEqual(offen(r).filter(m => m.text !== 'n. n. µg/cm²'), [], 'ohne Beleg ist kein Problem:\n' + zeig(r));
   });
 
   await fall('h', 'von Hand geschriebener Bericht, „Ist so gewollt“, gerundet', async () => {
@@ -379,6 +380,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     await page.waitForFunction(() => LektorKitTest.zustand().erg.zaehler.gewollt === 2, null, { timeout: 5000 });
     const g2 = await page.evaluate(async () => { const r = await navigator.storage.getDirectory(); const d = await (await (await (await (await r.getDirectoryHandle('Archiv')).getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst')).getDirectoryHandle('_Spektron')).getDirectoryHandle('LektorKit')).getFileHandle('_LektorKit.json'); return JSON.parse(await (await d.getFile()).text()).gewollt.length; });
     assert.equal(g2, 2, 'beide Bestätigungen in der Datei');
+    // „Ist so gewollt“ in Projekt A, sofort Projekt B öffnen: Vermerk landet in A, B bleibt unberührt
+    await pruefen(BR1.ordner);
+    const ab = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      document.querySelector('#befunde [data-zurueck]').click(); await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('25.0100 Altweg 3 Altstadt Tst'), archiv);
+      for (let i = 0; i < 50; i++) await new Promise(r => setTimeout(r, 20));
+      const a = JSON.parse(await (await (await (await (await (await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst')).getDirectoryHandle('_Spektron')).getDirectoryHandle('LektorKit')).getFileHandle('_LektorKit.json')).getFile()).text()).gewollt.length;
+      let b = 'keine'; try{ await (await (await archiv.getDirectoryHandle('25.0100 Altweg 3 Altstadt Tst')).getDirectoryHandle('Mitteilungen')).getFileHandle('_LektorKit.json'); b = 'da'; }catch(e){}
+      return [a, b, LektorKitTest.zustand().gewollt.length, LektorKitTest.zustand().daten.projekt.name]; });
+    assert.deepEqual(ab, [1, 'keine', 0, '25.0100 Altweg 3 Altstadt Tst']);
+    await page.evaluate(() => LektorKitTest.warteAndere());
     // doppelt vergebene Probennummer in LabelKit: nicht prüfbar, nie „belegt“
     const lk2 = JSON.parse(JSON.stringify(BR1.lk)); lk2.proben.push({ ...lk2.proben[0], z2: 'Kopie' });
     const d2 = br1Dateien(); d2['_Spektron/LabelKit/99.9002_Daten.json'] = lk2;
