@@ -396,6 +396,14 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const k6 = await lies(z6); assert.match(k6, /AB-2025-11111/); assert.doesNotMatch(k6, /ER-2025-33333|GE-2025-44444/);
     z6['word/document.xml'] = Buffer.from(z6['word/document.xml'].toString().replace('</w:sectPr>', '<w:titlePg/></w:sectPr>'));
     assert.match(await lies(z6), /ER-2025-33333/);
+    // zwei Abschnitte: der erste hat die „first“-Kopfzeile ohne titlePg, der zweite titlePg ohne eigene „first“ → geerbt, also sichtbar
+    const z9 = zipLesen(zipSchreiben(z6)), W9 = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    z9['word/document.xml'] = Buffer.from(`<?xml version="1.0"?><w:document ${W9}><w:body><w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rId7"/><w:headerReference w:type="first" r:id="rId9"/></w:sectPr></w:pPr><w:r><w:t>Teil 1</w:t></w:r></w:p><w:p><w:r><w:t>Teil 2</w:t></w:r></w:p><w:sectPr><w:titlePg/></w:sectPr></w:body></w:document>`);
+    const k9 = await lies(z9); assert.match(k9, /ER-2025-33333/); assert.match(k9, /AB-2025-11111/); assert.doesNotMatch(k9, /GE-2025-44444/);
+    // „P1“ innerhalb einer Prüfberichtsnummer ist keine Probe – die Nummer wird geprüft
+    const k10 = await page.evaluate(() => LektorKern.analysieren({ bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht AB-P1-123-01.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] },
+      { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [{ code: 'AB-P1-123-02', grund: 'AB-P1-123', fassung: 2, fremd: '' }], messungen: [] }).marken.map(m => m.art + ':' + m.text + ':' + m.status));
+    assert.deepEqual(k10, ['pruefbericht:AB-P1-123-01:abweicht']);
     // Fußnote mit Verweis wird gelesen, Trennlinie und verwaiste Note nicht
     const z7 = zipLesen(docxVonHand(['Text']));
     z7['word/document.xml'] = Buffer.from(z7['word/document.xml'].toString().replace('<w:t xml:space="preserve">Text</w:t></w:r>', '<w:t xml:space="preserve">Text</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r>'));

@@ -76,16 +76,21 @@ async function benutzteKopfzeilen(bytes, documentXml, alle, verweis = 'headerRef
   // nach lokalem Namen, nicht nach Präfix oder Namensraum-URI – gilt für Transitional und Strict OOXML (Codex, PR #1)
   const doc = new DOMParser().parseFromString(documentXml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length) return alle;
-  // nur sichtbare Varianten: „first“ nur mit titlePg im selben Abschnitt, „even“ nur mit evenAndOddHeaders in settings.xml (Codex, PR #1)
+  // nur sichtbare Varianten: „first“ nur in Abschnitten mit titlePg, „even“ nur mit evenAndOddHeaders in settings.xml (Codex, PR #1)
   const an = e => !!e && !/^(0|false|off)$/i.test(([...e.attributes].find(a => a.localName === 'val') || {}).value || '');
   let gerade = false; try{ const s = await zipEintrag(bytes, 'word/settings.xml'); if (s){ const sd = new DOMParser().parseFromString(s, 'application/xml'); gerade = an(sd.getElementsByTagNameNS('*', 'evenAndOddHeaders')[0]); } }catch(e){}
-  const refs = [...doc.getElementsByTagNameNS('*', verweis)].filter(e => {
-    const typ = ([...e.attributes].find(a => a.localName === 'type') || {}).value || 'default';
-    if (typ === 'first') return an([...e.parentNode.childNodes].find(c => c.nodeType === 1 && c.localName === 'titlePg'));
-    if (typ === 'even') return gerade;
-    return true; });
-  const ids = refs.map(e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value).filter(Boolean);
-  if (refs.length && ids.length !== refs.length) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
+  // je Abschnitt (sectPr in Dokumentreihenfolge): fehlt eine Variante, gilt die des vorigen Abschnitts (Word erbt sie)
+  const attr = (e, n) => ([...e.attributes].find(a => a.localName === n) || {}).value;
+  const rid = e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value;
+  const alleRefs = [...doc.getElementsByTagNameNS('*', verweis)];
+  if (alleRefs.some(e => !rid(e))) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
+  const geerbt = {}, ids = [];
+  for (const sp of doc.getElementsByTagNameNS('*', 'sectPr')){
+    for (const e of [...sp.childNodes].filter(c => c.nodeType === 1 && c.localName === verweis)) geerbt[attr(e, 'type') || 'default'] = rid(e);
+    const titel = an([...sp.childNodes].find(c => c.nodeType === 1 && c.localName === 'titlePg'));
+    if (geerbt.default) ids.push(geerbt.default);
+    if (titel && geerbt.first) ids.push(geerbt.first);
+    if (gerade && geerbt.even) ids.push(geerbt.even); }
   let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
   if (!rels) return alle;
   const rd = new DOMParser().parseFromString(rels, 'application/xml');
@@ -137,7 +142,7 @@ const SPANNE_VOR = new RegExp(String.raw`\d(?:\s?(?:${EINHEIT}))?\s*(?:bis|–|�
 const PRUEF_EINHEIT = /^(?:[µμ]g\/100cm2|[µμ]g\/cm2|mg\/m2|[µμ]g\/m2|ng\/m2|mg\/kg|M\.?-%)$/i;
 const einheitKurz = u => tidy(u).replace(/μ/g, 'µ').replace(/²/g, '2').replace(/\s+/g, '');
 const PROBEN_RE = /(?<![\p{L}\d])(\p{L}*?[Pp]roben?)\s+(\d{1,4}(?:\s*(?:,|und|bis|sowie)\s*\d{1,4})*)(?![\d]|,\d)/gu;
-const P_RE = /(?<![\p{L}\d])P(\d{1,4})(?![\p{L}\d])/gu;
+const P_RE = /(?<![\p{L}\d\-])P(\d{1,4})(?![\p{L}\d\-])/gu;   // nicht „P1“ in „AB-P1-123-01“ (Codex, PR #1)
 const PB_RE = /(?<![\w\-])([A-Z]{2,4}(?:-[A-Z0-9]{1,12}){3,})(?![\w\-])/g;
 const ANL_RE = /(?<![\p{L}])Anlagen?\s+(\d{1,2}(?:\s*(?:,|und|bis)\s*\d{1,2})*)(?![\d:])/gu;
 const DATUM_RE = /(?<![\d.])(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)/g;
