@@ -1053,7 +1053,8 @@ async function docxLesen(bytes){
   const gesehen = new Set();
   for (const n of kopf) for (const b of teilBloecke(teile[n], 'kopf', segs)){
     const key = b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text)));
-    if (!key || gesehen.has(key)){ if (b.typ === 'p') b.seg.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
+    // doppelte Kopfzeile (erste Seite / Folgeseiten): ganz weglassen, auch die Zellen einer Tabelle (Codex, PR #1)
+    if (!key || gesehen.has(key)){ for (const s of b.typ === 'p' ? [b.seg] : b.zeilen.flat()) s.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
   bloecke.push(...teilBloecke(teile['word/document.xml'], 'document', segs));
   let abschnitt = '', titel = '';
   for (const b of bloecke){ if (b.kopf){ b.abschnitt = 'Kopfzeile'; continue; }
@@ -1490,7 +1491,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const tidy = A.tidy;
 const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
-const S = { andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
+const S = { oeffnenLauf: 0, andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
 $('version').textContent = ' ' + K.VERSION;
 
 /* ---------- Ordner ---------- */
@@ -1641,10 +1642,15 @@ async function archivAusSpeicher(){ try{ const db = await suiteDb(); try{ return
 const recht = async (h, fragen) => { if (!h.queryPermission) return true; let p = await h.queryPermission({ mode: 'read' }); if (p === 'prompt' && fragen) p = await h.requestPermission({ mode: 'read' }); return p === 'granted'; };
 
 async function oeffnen(dir, archiv, wunsch){
-  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.andereLauf++;
+  // Jeder Aufruf bekommt eine Nummer; ein älterer, langsamerer Lauf schreibt nichts mehr in den Zustand (Codex, PR #1)
+  const lauf = ++S.oeffnenLauf, veraltet = () => lauf !== S.oeffnenLauf;
+  S.andereLauf++; S.doc = null;
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
-  S.daten = await projektLesen(dir);
-  try{ const g = await gewolltLesen(dir); S.gewollt = g.liste; S.gewolltFehler = ''; }catch(e){ S.gewollt = []; S.gewolltFehler = e.message; }
+  const daten = await projektLesen(dir); if (veraltet()) return;
+  let gewollt = [], gewolltFehler = '';
+  try{ gewollt = (await gewolltLesen(dir)).liste; }catch(e){ gewolltFehler = e.message; }
+  if (veraltet()) return;
+  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.daten = daten; S.gewollt = gewollt; S.gewolltFehler = gewolltFehler;
   const pj = S.daten.pj || {};
   $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>${esc([pj.schadennummer ? 'Schaden-Nr. ' + tidy(pj.schadennummer).replace(/\n/g, ', ') : '', pj.zustaendig && pj.zustaendig.kuerzel ? 'Zuständig: ' + pj.zustaendig.kuerzel : ''].filter(Boolean).join(' · '))}</span>`;
   const sel = $('selBericht');
@@ -1816,7 +1822,9 @@ $('btnProjekt').onclick = async () => {
   await oeffnen(dir, archiv);
 };
 $('btnLesen').onclick = () => lesen();
-$('btnNeu').onclick = async () => { const d = S.bericht && S.bericht.datei, name = S.bericht && S.bericht.name; await oeffnen(S.dir, S.archiv); if (d) await lesen(d); else { const i = S.daten.mitteilungen.findIndex(x => x.name === name); if (i >= 0) $('selBericht').value = String(i); await lesen(); } };
+// Neu einlesen: derselbe Bericht – liegt er nicht mehr in „Mitteilungen“, wird nichts anderes gelesen (Codex, PR #1)
+$('btnNeu').onclick = async () => { const d = S.bericht && S.bericht.datei, name = S.bericht && S.bericht.name;
+  await oeffnen(S.dir, S.archiv, d ? '' : 'Mitteilungen/' + name); if (d) await lesen(d); };
 $('btnAndererBericht').onclick = () => { $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); };
 $('btnDrucken').onclick = () => { protokollBauen(); window.print(); };
 $('btnDatei').onclick = () => $('eingabeDatei').click();

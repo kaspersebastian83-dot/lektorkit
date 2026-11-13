@@ -13,7 +13,8 @@
 //  i  Bericht und alle Projektdateien nach einem Lauf byte-gleich; alte Projekte bekommen nie „_Spektron“
 //  j  nicht prüfbar (Prüfbericht nur als PDF, Übernahme nicht aktuell) → Zeile oben mit Zahl und Grund, kein sauberes Ergebnis
 //  k  Prüfprotokoll: eine Seite
-//  l  Codex-Befunde PR #1: fehlender Bericht im Link → nichts lesen; alte Übernahme mit gelöschter -02 macht -01 nicht „überholt“
+//  l  Codex-Befunde PR #1: fehlender Bericht (Link, neu einlesen) → nichts lesen; alte Übernahme mit gelöschter -02 macht -01 nicht
+//     „überholt“; zwei Projekte schnell nacheinander → das letzte gilt; doppelte Kopftabelle nur einmal
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http'), zlib = require('node:zlib'), assert = require('node:assert/strict');
 const ROOT = path.join(__dirname, '..'), OUT = path.join(__dirname, 'out');
 const NACHBAR = (env, name) => path.resolve(process.env[env] || path.join(ROOT, '..', name));
@@ -338,6 +339,24 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       return { doc: !!LektorKitTest.zustand().doc, start: !document.getElementById('start').classList.contains('versteckt'), meldung: document.getElementById('meldung').textContent }; });
     assert.equal(s.doc, false); assert.equal(s.start, true); assert.match(s.meldung, /2\._Mitteilung_99\.9002_Entwurf\.docx“ liegt nicht in „Mitteilungen“/);
     await page.evaluate(() => LektorKitTest.warteAndere());
+    // „Bericht neu einlesen“, nachdem der Bericht umbenannt wurde: nichts anderes lesen
+    await pruefen(BR1.ordner);
+    const n = await page.evaluate(async b => { const root = await navigator.storage.getDirectory(), m = await (await (await root.getDirectoryHandle('Archiv')).getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst')).getDirectoryHandle('Mitteilungen');
+      await m.removeEntry(b); document.getElementById('btnNeu').click(); for (let i = 0; i < 100 && !document.getElementById('meldung').textContent; i++) await new Promise(r => setTimeout(r, 30));
+      return { doc: !!LektorKitTest.zustand().doc, meldung: document.getElementById('meldung').textContent }; }, BERICHT);
+    assert.equal(n.doc, false); assert.match(n.meldung, /liegt nicht in „Mitteilungen“/);
+    await page.evaluate(() => LektorKitTest.warteAndere());
+    // zwei Projekte kurz nacheinander öffnen: es gilt das zuletzt geöffnete, auch wenn das erste langsamer fertig wird
+    await archivAnlegen({ [BR1.ordner]: br1Dateien(), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
+    const w = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      const a = LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv), b = LektorKitTest.oeffnen(await archiv.getDirectoryHandle('25.0100 Altweg 3 Altstadt Tst'), archiv);
+      await Promise.all([a, b]); await LektorKitTest.warteAndere(); const S = LektorKitTest.zustand(); return [S.dir.name, S.daten.projekt.name, S.andere ? S.andere.nr.has('99.9002') : null]; });
+    assert.deepEqual(w, ['25.0100 Altweg 3 Altstadt Tst', '25.0100 Altweg 3 Altstadt Tst', true]);
+    // dieselbe Tabelle in zwei Kopfzeilen: Zellen nur einmal ausgewertet
+    const kopf = '<?xml version="1.0"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Schaden-Nr.: XY-2025-12345</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>';
+    const z = zipLesen(docxVonHand(['Text'])); z['word/header1.xml'] = Buffer.from(kopf); z['word/header2.xml'] = Buffer.from(kopf);
+    const segs = await page.evaluate(async b => { const d = await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0))); return d.segs.filter(s => !s.leer && /XY-2025/.test(s.text)).length; }, zipSchreiben(z).toString('base64'));
+    assert.equal(segs, 1, 'doppelte Kopftabelle nur einmal');
   });
 
   await fall('k', 'Prüfprotokoll auf einer Seite', async () => {

@@ -58,7 +58,8 @@ async function docxLesen(bytes){
   const gesehen = new Set();
   for (const n of kopf) for (const b of teilBloecke(teile[n], 'kopf', segs)){
     const key = b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text)));
-    if (!key || gesehen.has(key)){ if (b.typ === 'p') b.seg.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
+    // doppelte Kopfzeile (erste Seite / Folgeseiten): ganz weglassen, auch die Zellen einer Tabelle (Codex, PR #1)
+    if (!key || gesehen.has(key)){ for (const s of b.typ === 'p' ? [b.seg] : b.zeilen.flat()) s.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
   bloecke.push(...teilBloecke(teile['word/document.xml'], 'document', segs));
   let abschnitt = '', titel = '';
   for (const b of bloecke){ if (b.kopf){ b.abschnitt = 'Kopfzeile'; continue; }
