@@ -46,7 +46,8 @@ function teilBloecke(xml, teil, segs, wurzelWahl){
   const out = [];
   const lauf = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue;
     if (c.localName === 'p'){ const text = absatzText(c); out.push({ typ: 'p', seg: neu(text, 'p'), ueb: teil === 'document' && istUeberschrift(text, c) }); }
-    else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').map(tr => kinder(tr, 'tc').map(tc => neu([...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && e.parentNode === tc || e.localName === 'p' && e.parentNode.localName === 'sdtContent').map(absatzText).join('\n'), 'zelle')));
+    // Tabellenzeilen, die mit Änderungen nachverfolgen gelöscht sind (trPr/del), zeigt Word nicht – sie zählen nicht (Codex, PR #1)
+    else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').filter(tr => !kinder(tr, 'trPr').some(pr => kinder(pr, 'del').length)).map(tr => kinder(tr, 'tc').map(tc => neu([...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && e.parentNode === tc || e.localName === 'p' && e.parentNode.localName === 'sdtContent').map(absatzText).join('\n'), 'zelle')));
       out.push({ typ: 'tab', zeilen }); }
     else if (c.localName === 'sdt'){ const inh = kinder(c, 'sdtContent')[0]; if (inh) lauf(inh); }
     else if (c.localName === 'body') lauf(c); } };
@@ -411,7 +412,7 @@ function analysieren(doc, d){
         if (bg && !inTab){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Brandgeruch-Prüfung – keine Laborwerte.' }); continue; }
         const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4}))/u.exec(nach);
         // folgt nach der Nummer eine weitere Probe („, Probe 2“, „, 2“, „P2“, „und“, „bis“, „sowie“, „/“), ist die Zuordnung nicht eindeutig
-        const weitere = dicht && /^\s*(?:[,;\/]\s*(?:\p{L}*probe\s+|P)?\d|und\b|bis\b|sowie\b|oder\b|&)/iu.test(nach.slice(dicht[0].length));
+        const weitere = dicht && /^\s*(?:[,;\/]\s*(?:in\s+(?:der\s+)?)?(?:\p{L}*probe\s+|P)?\d|und\b|bis\b|sowie\b|oder\b|&)/iu.test(nach.slice(dicht[0].length));
         let n = null, grund = '';
         if (dicht && !weitere) n = Number(dicht[1] || dicht[2]);
         else if (dicht) grund = 'Mehrere Proben – die Zahl lässt sich nicht sicher einer Probe zuordnen.';
@@ -552,8 +553,9 @@ function andereIndex(eintraege, eigeneNr){
     for (const t of texte) for (const x of strassenIn(t)) if (!BUERO.strassen.has(x.key)) dazu(strassen, x.key, { name: e.name, text: x.text });
     if (e.pj){
       for (const t of schadenTeile(e.pj.schadennummer)){ const k = idKey(t); if (k.length >= 5 && /\d/.test(k)) dazu(schaden, k, { name: e.name, text: t }); }
+      // Name = Teil vor dem ersten Komma/Zeilenumbruch (die Adresse folgt danach, Codex PR #1)
       for (const [feld, wert] of [['Auftraggeber', e.pj.auftraggeber], ['Versicherungsnehmer', e.pj.versicherungsnehmer], ['Versicherer', e.pj.versicherer]]){
-        const erste = tidy(String(wert || '').split(/\n|,(?=\s*\S*\d)/)[0]), n = normText(erste);
+        const erste = tidy(String(wert || '').split(/[\n,]/)[0]), n = normText(erste);
         if (n.length < 10 || BUERO.namen.some(b => n.includes(b)) || /^(unbekannt|privat|-+)$/.test(n)) continue;
         namen.push({ norm: n, text: erste, feld, name: e.name }); } } }
   return { nr, strassen, schaden, namen, voll, nurName, gelesen: voll + nurName };

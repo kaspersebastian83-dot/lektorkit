@@ -417,6 +417,17 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     z11['word/_rels/document.xml.rels'] = Buffer.from(z11['word/_rels/document.xml.rels'].toString().replace('</Relationships>', '<Relationship Id="rId9" Type="x" Target="header3.xml"/></Relationships>'));
     z11['word/header3.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'HI-2025-66666'));
     const k11 = await lies(z11); assert.match(k11, /AB-2025-11111/); assert.doesNotMatch(k11, /HI-2025-66666/);
+    // gelöschte Tabellenzeile zählt nicht
+    const z12 = zipLesen(docxVonHand(['x']));
+    z12['word/document.xml'] = Buffer.from(z12['word/document.xml'].toString().replace('<w:body>', '<w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>sichtbar</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:trPr><w:del w:id="9" w:author="x"/></w:trPr><w:tc><w:p><w:r><w:t>DZ-2025-77777</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'));
+    const k12 = await lies(z12); assert.match(k12, /sichtbar/); assert.doesNotMatch(k12, /DZ-2025/);
+    // „in Probe 1, in Probe 2 ebenfalls“ → ohne Beleg; Auftraggeber eines anderen Projekts ohne Adresse erkannt
+    const k13 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] });
+      const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12', q: 'gemessen', v: 12, bericht: 'AR-1' }, { label: 'P2', p: 'Chlorid', u: 'µg/cm²', roh: '3', q: 'gemessen', v: 3, bericht: 'AR-1' }],
+        andere: LektorKern.andereIndex([{ name: '99.9001 Anderort Tst', nr: '99.9001', pj: { auftraggeber: 'Fremd Versicherung AG, Lindenweg 4, 12345 Ort' } }], '99.9002') };
+      return [LektorKern.analysieren(seg('Gemessen wurden 12 µg/cm² in Probe 1, in Probe 2 ebenfalls.'), d).marken.find(m => m.art === 'wert').status,
+        LektorKern.analysieren(seg('Auftraggeber ist die Fremd Versicherung AG.'), d).marken.map(m => m.art + ':' + m.status)]; });
+    assert.deepEqual(k13, ['ohne', ['name:fremd']]);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
