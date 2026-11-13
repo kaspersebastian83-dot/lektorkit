@@ -446,7 +446,8 @@ function analysieren(doc, d){
   function pruefberichtMarke(seg, von, bis, code){
     const fa = A.berichtsFassung(code), alle = d.berichte || [], titel = `Prüfbericht ${code}`;
     const gleich = alle.filter(b => A.norm(b.code) === A.norm(code)), sel = gleich[0];
-    const neuere = alle.filter(b => b.fassung !== null && fa.fassung !== null && b.grund === fa.grund && b.fassung > fa.fassung).sort((a, b) => b.fassung - a.fassung);
+    // eine „neuere Fassung“ eines anderen Projekts zählt nicht (Codex, PR #1)
+    const neuere = alle.filter(b => !b.fremd && b.fassung !== null && fa.fassung !== null && b.grund === fa.grund && b.fassung > fa.fassung).sort((a, b) => b.fassung - a.fassung);
     const ersetzt = (d.ersetzt || []).some(c => A.norm(c) === A.norm(code));
     if (sel && sel.fremd) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code} nennt Projekt ${sel.fremd}`, notiz: `Auftragsreferenz „${sel.ref}“ – seine Werte zählen hier nicht.` });
     if (neuere.length || ersetzt){ const n = neuere[0];
@@ -521,7 +522,9 @@ function analysieren(doc, d){
 
   /* --- „Ist so gewollt“ anwenden, zählen --- */
   const gewollt = new Map((d.gewollt || []).map(g => [g.schluessel, g]));
-  for (const m of marken){ m.icon = ICON[m.status]; if ((m.status === 'abweicht' || m.status === 'fremd') && gewollt.has(m.schluessel)) m.gewollt = gewollt.get(m.schluessel); }
+  // gilt nur, solange der Befund derselbe ist – ändern sich Laborwert, LabelKit oder Projektdaten, ist die Stelle wieder offen (Codex, PR #1)
+  for (const m of marken){ m.icon = ICON[m.status]; const g = gewollt.get(m.schluessel);
+    if ((m.status === 'abweicht' || m.status === 'fremd') && g && g.befund === (m.befund || m.titel)) m.gewollt = g; }
   const z = { belegt: 0, abweicht: 0, fremd: 0, ohne: 0, gewollt: 0 };
   for (const m of marken){ if (m.gewollt) z.gewollt++; else z[m.status]++; }
   const np = new Map(); for (const m of marken) if (m.nichtPruefbar) np.set(m.nichtPruefbar, (np.get(m.nichtPruefbar) || 0) + 1);

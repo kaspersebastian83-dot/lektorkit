@@ -431,6 +431,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const k5 = await page.evaluate(() => { const doc = { bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht ABC-1-2-30 und ABC-1-2-31.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] };
       return LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], pdfNamen: ['ABC-1-2-300.pdf', 'Bericht ABC-1-2-31.pdf'], messungen: [] }).marken.map(m => m.text + ':' + m.status); });
     assert.deepEqual(k5, ['ABC-1-2-30:ohne', 'ABC-1-2-31:belegt']);
+    // -02 eines anderen Projekts macht die eigene -01 nicht „überholt“; „gewollt“ gilt nur für denselben Befund
+    const k8 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] });
+      const basis = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [{ code: 'AR-1-2-01', grund: 'AR-1-2', fassung: 1, fremd: '' }, { code: 'AR-1-2-02', grund: 'AR-1-2', fassung: 2, fremd: '99.9001', ref: '99.9001 Anderort' }] };
+      const a = LektorKern.analysieren(seg('Siehe Prüfbericht AR-1-2-01.'), { ...basis, messungen: [] }).marken.map(m => m.status);
+      const w = v => ({ ...basis, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: v, q: 'gemessen', v: Number(v.replace(',', '.')), bericht: 'AR-1-2-01' }] });
+      const r1 = LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), w('12,3')), m1 = r1.marken.find(m => m.art === 'wert');
+      const g = [{ schluessel: m1.schluessel, befund: m1.befund, kuerzel: 'Tst', am: '2026-11-13' }];
+      return [a, !!LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), { ...w('12,3'), gewollt: g }).marken.find(m => m.art === 'wert').gewollt,
+        !!LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), { ...w('15,0'), gewollt: g }).marken.find(m => m.art === 'wert').gewollt]; });
+    assert.deepEqual(k8, [['belegt'], true, false]);
     // Spannen sind keine Messwerte; verschobener Alttext (moveFrom) zählt nicht
     const sp = await page.evaluate(() => { const seg = t => ({ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' });
       const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12,3', q: 'gemessen', v: 12.3, bericht: 'AR-1' }], berichte: [] };
