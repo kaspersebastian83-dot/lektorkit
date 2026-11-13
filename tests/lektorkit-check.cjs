@@ -404,6 +404,14 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const k10 = await page.evaluate(() => LektorKern.analysieren({ bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht AB-P1-123-01.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] },
       { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [{ code: 'AB-P1-123-02', grund: 'AB-P1-123', fassung: 2, fremd: '' }], messungen: [] }).marken.map(m => m.art + ':' + m.text + ':' + m.status));
     assert.deepEqual(k10, ['pruefbericht:AB-P1-123-01:abweicht']);
+    // Projektnummer, die in keinem Projekt des Archivs steht: hinter „Projektnummer:“ weicht ab, sonst ohne Beleg; „10.2025“ (Monat.Jahr) keine Marke
+    const k32 = await page.evaluate(() => LektorKern.analysieren({ bloecke: [], segs: [{ id: 0, text: 'Projektnummer: 99.9020. Vgl. auch 98.1234 und Stand 10.2025.', art: 'p', teil: 'document', abschnitt: '1', titel: 'Allgemeines' }] },
+      { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [], andere: LektorKern.andereIndex([{ name: '99.9001 Lindenweg Anderort Tst', nr: '99.9001', pj: null }]) }).marken.filter(m => m.art === 'projektnr').map(m => m.text + ':' + m.status));
+    assert.deepEqual(k32, ['99.9020:abweicht', '98.1234:ohne']);
+    // Textfeld in gelöschtem oder verschobenem Text: nicht gelesen
+    const z30 = zipLesen(docxVonHand(["Text"])), tb = n => `<w:r><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml"><v:textbox><w:txbxContent><w:p><w:r><w:t>${n}</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>`;
+    z30['word/document.xml'] = Buffer.from(z30['word/document.xml'].toString().replace('<w:t xml:space="preserve">Text</w:t></w:r>', `<w:t xml:space="preserve">Text</w:t></w:r>${tb('TB-2025-10001')}<w:del w:id="7" w:author="x">${tb('TD-2025-20002')}</w:del><w:moveFrom w:id="8" w:author="x">${tb('TM-2025-30003')}</w:moveFrom>`));
+    const k31 = await lies(z30); assert.match(k31, /TB-2025-10001/); assert.doesNotMatch(k31, /TD-2025|TM-2025/);
     // Fußnote mit Verweis wird gelesen, Trennlinie und verwaiste Note nicht
     const z7 = zipLesen(docxVonHand(['Text']));
     z7['word/document.xml'] = Buffer.from(z7['word/document.xml'].toString().replace('<w:t xml:space="preserve">Text</w:t></w:r>', '<w:t xml:space="preserve">Text</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r>'));

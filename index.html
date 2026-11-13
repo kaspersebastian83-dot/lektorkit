@@ -1018,7 +1018,7 @@ const verborgen = r => [...r.childNodes].some(pr => pr.nodeType === 1 && pr.loca
 /** Textfelder in einem Absatz (ohne die Ersatzdarstellung mc:Fallback, sonst doppelt; ohne verschachtelte – die liest das Textfeld selbst). */
 function textfelder(p){
   const out = [], geh = n => { for (const c of n.childNodes){ if (c.nodeType !== 1 || c.localName === 'Fallback') continue;
-    if (c.localName === 'txbxContent') out.push(c); else if (c.localName !== 't' && !(c.localName === 'r' && verborgen(c))) geh(c); } };
+    if (c.localName === 'txbxContent') out.push(c); else if (c.localName !== 't' && !HISTORIE.has(c.localName) && !(c.localName === 'r' && verborgen(c))) geh(c); } };   // gelöschte/verschobene Textfelder nicht (Codex, PR #1)
   geh(p); return out;
 }
 function absatzText(p){
@@ -1447,7 +1447,11 @@ function analysieren(doc, d){
     // Projektnummern
     for (const m of text.matchAll(PNR_RE)){ const von = m.index, bis = von + m[1].length; if (!frei(seg, von, bis)) continue;
       if (m[1] === pnr) neu(seg, von, bis, 'projektnr', { status: 'belegt', titel: `Projektnummer ${m[1]}`, beleg: [['Projektordner', d.projekt.name]] });
-      else if (andere && andere.nr.has(m[1])) neu(seg, von, bis, 'projektnr', { status: 'fremd', titel: `Projektnummer ${m[1]}`, befund: `„${m[1]}“ ist Projekt ${andere.nr.get(m[1])}`, notiz: `Dieses Projekt ist ${pnr}.`, beleg: [['Archiv', andere.nr.get(m[1])]] }); }
+      else if (andere && andere.nr.has(m[1])) neu(seg, von, bis, 'projektnr', { status: 'fremd', titel: `Projektnummer ${m[1]}`, befund: `„${m[1]}“ ist Projekt ${andere.nr.get(m[1])}`, notiz: `Dieses Projekt ist ${pnr}.`, beleg: [['Archiv', andere.nr.get(m[1])]] });
+      // eine andere Nummer, die in keinem Projekt des Archivs steht: hinter „Projektnummer:“ weicht sie ab, sonst ohne Beleg (Codex, PR #1)
+      else if (pnr && /^\d{2}\.\d{4}$/.test(m[1]) && !/^(0[1-9]|1[0-2])\.(19|20)\d\d$/.test(m[1])){   /* „10.2025“ ist Monat.Jahr, keine Projektnummer */ const label = /Projekt(?:nummer|-?\s?Nr\.?)?\s*:?\s*$/i.test(text.slice(Math.max(0, von - 20), von));
+        neu(seg, von, bis, 'projektnr', label ? { status: 'abweicht', titel: `Projektnummer ${m[1]}`, befund: `Projektnummer: im Text ${m[1]}, dieses Projekt ist ${pnr}`, notiz: andere ? 'Die Nummer gehört zu keinem Projekt im Archiv.' : 'Andere Projekte nicht gelesen.' }
+          : { status: 'ohne', titel: `Projektnummer ${m[1]}?`, notiz: andere ? 'Steht in keinem Projekt des Archivs.' : 'Andere Projekte nicht gelesen – nicht prüfbar.' }); } }
     // Schaden-Nr.
     schadenMarken(seg);
     // Straßen
