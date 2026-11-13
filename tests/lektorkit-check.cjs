@@ -399,6 +399,10 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const r4 = await pruefen(BR1.ordner), p4 = r4.marken.filter(m => m.art === 'probe' && m.probe === 'P4');
     assert.ok(p4.length && p4.every(m => m.status === 'ohne' && /doppelt/.test(m.np)), JSON.stringify(p4));
     assert.ok(r4.zeilen.some(z => /warn/.test(z.k) && /Probennummer in LabelKit doppelt vergeben/.test(z.t)));
+    // Prüfbericht nur als PDF-Dateiname: ganze Nummer, keine längere
+    const k5 = await page.evaluate(() => { const doc = { bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht ABC-1-2-30 und ABC-1-2-31.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] };
+      return LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], pdfNamen: ['ABC-1-2-300.pdf', 'Bericht ABC-1-2-31.pdf'], messungen: [] }).marken.map(m => m.text + ':' + m.status); });
+    assert.deepEqual(k5, ['ABC-1-2-30:ohne', 'ABC-1-2-31:belegt']);
     // Bericht lesen und währenddessen ein anderes Projekt öffnen: der alte Bericht kommt nicht ins neue Projekt
     const v = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
       await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv);

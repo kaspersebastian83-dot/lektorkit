@@ -1417,7 +1417,9 @@ function analysieren(doc, d){
     if (neuere.length || ersetzt){ const n = neuere[0];
       return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code.slice(-3)} ist überholt`, notiz: n ? `Im Projektordner liegt die Fassung ${n.code}.` : 'ResultKit führt ihn als ersetzt.', beleg: n ? [['Laborergebnisse', `${n.code}${n.datei ? ` (${n.datei})` : ''}`]] : [] }); }
     if (sel) return neu(seg, von, bis, 'pruefbericht', { status: 'belegt', titel, beleg: [['Laborergebnisse', `${sel.code}${sel.datei ? ` (${sel.datei})` : ''}${sel.vorlaeufig ? ' – vorläufig' : ''}${sel.quelle === 'resultkit' ? ' · in ResultKit übernommen' : ''}`]], pdf: sel.pdf || '' });
-    const pdf = (d.pdfNamen || []).find(n => A.norm(n).includes(A.norm(code)));
+    // ganze Nummer im Dateinamen, keine längere („…-30“ ist nicht „…-300“, „…-01“ nicht „…-01-02“) – Codex, PR #1
+    const strich = s => String(s).normalize('NFC').replace(/[\u2010-\u2015\u2212]/g, '-').toUpperCase(), cn = strich(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pdf = (d.pdfNamen || []).find(n => new RegExp(`(?<![A-Z0-9-])${cn}(?!-?[A-Z0-9])`).test(strich(n)));
     if (pdf) return neu(seg, von, bis, 'pruefbericht', { status: 'belegt', titel, beleg: [['Laborergebnisse', `PDF „${pdf}“ (Nummer nur im Dateinamen)`]], pdf });
     if (alle.length) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code} liegt nicht in „Laborergebnisse“`, notiz: `Im Ordner: ${[...new Set(alle.map(b => b.code))].join(', ')}.` });
     nichtPruefbar.push('kein Prüfbericht lesbar');
