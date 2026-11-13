@@ -431,6 +431,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
         andere: LektorKern.andereIndex([{ name: '99.9001 Anderort Tst', nr: '99.9001', pj: null }], '99.9002') };
       return LektorKern.analysieren({ bloecke: [{ typ: 'tab', zeilen: [segs.slice(0, 4), segs.slice(4)] }], segs }, d).marken.filter(m => m.art !== 'probe').map(m => m.art + ':' + m.text + ':' + m.status); });
     assert.deepEqual(k14, ['wert:12,3:belegt', 'wert:999:abweicht', 'projektnr:99.9001:fremd']);
+    // Probe-Spalte „P1“ / „Probe 1“; ausgeblendeter Text nicht, Textfeld schon (Ersatzdarstellung nur einmal)
+    const k16 = await page.evaluate(() => { const s = (id, text) => ({ id, text, art: 'zelle', teil: 'document', abschnitt: '5', titel: 'Befund' });
+      const segs = [s(0, 'Probe'), s(1, 'Chlorid [µg/cm²]'), s(2, 'Probe 1'), s(3, '13,2'), s(4, 'P1'), s(5, '12,3')];
+      const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12,3', q: 'gemessen', v: 12.3, bericht: 'AR-1' }] };
+      return LektorKern.analysieren({ bloecke: [{ typ: 'tab', zeilen: [segs.slice(0, 2), segs.slice(2, 4), segs.slice(4)] }], segs }, d).marken.filter(m => m.art === 'wert').map(m => m.text + ':' + m.status); });
+    assert.deepEqual(k16, ['13,2:abweicht', '12,3:belegt']);
+    const z13 = zipLesen(docxVonHand(['x'])), WV = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"';
+    z13['word/document.xml'] = Buffer.from(`<?xml version="1.0"?><w:document ${WV}><w:body><w:p><w:r><w:t>sichtbar </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>VS-2025-12121</w:t></w:r>` +
+      `<w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wps:txbx><w:txbxContent><w:p><w:r><w:t>Feld TB-2025-34343</w:t></w:r></w:p></w:txbxContent></wps:txbx></w:drawing></mc:Choice><mc:Fallback><w:pict><w:txbxContent><w:p><w:r><w:t>Feld TB-2025-34343</w:t></w:r></w:p></w:txbxContent></w:pict></mc:Fallback></mc:AlternateContent></w:r></w:p></w:body></w:document>`);
+    const k17 = await lies(z13); assert.doesNotMatch(k17, /VS-2025/); assert.equal((k17.match(/TB-2025-34343/g) || []).length, 1, k17);
     // „in Probe 1, in Probe 2 ebenfalls“ → ohne Beleg; Auftraggeber eines anderen Projekts ohne Adresse erkannt
     const k13 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] });
       const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12', q: 'gemessen', v: 12, bericht: 'AR-1' }, { label: 'P2', p: 'Chlorid', u: 'µg/cm²', roh: '3', q: 'gemessen', v: 3, bericht: 'AR-1' }],

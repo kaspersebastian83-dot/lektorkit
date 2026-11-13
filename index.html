@@ -1011,8 +1011,16 @@ const VERSION = '1.0.0';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
-    schreibt Labor-Nr. damit) und weiches Trennzeichen wie in Word. Gelöschter und verschobener Alttext (Änderungen nachverfolgen: del, moveFrom), Feldbefehle und
-    Textfelder zählen nicht. Geschütztes Leerzeichen → Leerzeichen (gleiche Länge, Positionen bleiben). */
+    schreibt Labor-Nr. damit) und weiches Trennzeichen wie in Word. Gelöschter und verschobener Alttext (Änderungen nachverfolgen: del, moveFrom),
+    ausgeblendeter Text und Feldbefehle zählen nicht; Textfelder werden als eigene Absätze gelesen (textfelder). Geschütztes Leerzeichen → Leerzeichen (gleiche Länge, Positionen bleiben). */
+const eingeschaltet = e => !!e && !/^(0|false|off)$/i.test(([...e.attributes].find(a => a.localName === 'val') || {}).value || '');
+const verborgen = r => [...r.childNodes].some(pr => pr.nodeType === 1 && pr.localName === 'rPr' && [...pr.childNodes].some(x => x.nodeType === 1 && (x.localName === 'vanish' || x.localName === 'webHidden') && eingeschaltet(x)));
+/** Textfelder in einem Absatz (ohne die Ersatzdarstellung mc:Fallback, sonst doppelt; ohne verschachtelte – die liest das Textfeld selbst). */
+function textfelder(p){
+  const out = [], geh = n => { for (const c of n.childNodes){ if (c.nodeType !== 1 || c.localName === 'Fallback') continue;
+    if (c.localName === 'txbxContent') out.push(c); else if (c.localName !== 't' && !(c.localName === 'r' && verborgen(c))) geh(c); } };
+  geh(p); return out;
+}
 function absatzText(p){
   let t = '';
   const geh = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue; const ln = c.localName;
@@ -1020,7 +1028,8 @@ function absatzText(p){
     else if (ln === 'tab') t += '\t';
     else if (ln === 'br' || ln === 'cr') t += '\n';
     else if (ln === 'noBreakHyphen') t += '-';
-    else if (ln === 'softHyphen' || ln === 'pPr' || ln === 'rPr' || ln === 'del' || ln === 'moveFrom' || ln === 'delText' || ln === 'instrText' || ln === 'txbxContent' || ln === 'fldSimple' && false) {}
+    else if (ln === 'softHyphen' || ln === 'pPr' || ln === 'rPr' || ln === 'del' || ln === 'moveFrom' || ln === 'delText' || ln === 'instrText' || ln === 'txbxContent' || ln === 'Fallback') {}
+    else if (ln === 'r' && verborgen(c)) {}   // ausgeblendeter Text (vanish, webHidden) – zeigt Word nicht (Codex, PR #1)
     else geh(c); } };
   geh(p); return t;
 }
@@ -1043,7 +1052,8 @@ function teilBloecke(xml, teil, segs, wurzelWahl){
   const geloeschteZeile = e => { for (let x = e.parentNode; x && x !== doc; x = x.parentNode) if (x.localName === 'tr' && kinder(x, 'trPr').some(pr => kinder(pr, 'del').length)) return true; return false; };
   const zellText = tc => [...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && !geloeschteZeile(e)).map(absatzText).join('\n');
   const lauf = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue;
-    if (c.localName === 'p'){ const text = absatzText(c); out.push({ typ: 'p', seg: neu(text, 'p'), ueb: teil === 'document' && istUeberschrift(text, c) }); }
+    if (c.localName === 'p'){ const text = absatzText(c); out.push({ typ: 'p', seg: neu(text, 'p'), ueb: teil === 'document' && istUeberschrift(text, c) });
+      for (const tb of textfelder(c)) lauf(tb); }   // Textfelder (z. B. Projektangaben in einer Form im Kopf): sichtbar, also prüfen (Codex, PR #1)
     // Tabellenzeilen, die mit Änderungen nachverfolgen gelöscht sind (trPr/del), zeigt Word nicht – sie zählen nicht (Codex, PR #1)
     else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').filter(tr => !kinder(tr, 'trPr').some(pr => kinder(pr, 'del').length)).map(tr => kinder(tr, 'tc').map(tc => neu(zellText(tc), 'zelle')));
       out.push({ typ: 'tab', zeilen }); }
@@ -1366,7 +1376,7 @@ function analysieren(doc, d){
     // jede Wertspalte („Chlorid [µg/cm²]“, „Σ 16 EPA-PAK [µg/m²]“) – nicht nur die erste (Codex, PR #1)
     const wSp = kopf.map((k, i) => /\[(.+)\]/.test(k) && /chlorid|PAK|EPA|summe/i.test(k) ? { i, u: /\[(.+)\]/.exec(k)[1], p: /chlorid/i.test(k) ? 'Chlorid' : 'PAK' } : null).filter(Boolean);
     for (const z of b.zeilen.slice(1)){
-      const nm = /^\s*(\d{1,4})\b/.exec(z[iP] ? z[iP].text : ''); if (!nm) continue; const n = Number(nm[1]);
+      const nm = /^\s*(?:(?:Probe|P)\s*)?(\d{1,4})\b/i.exec(z[iP] ? z[iP].text : ''); if (!nm) continue; const n = Number(nm[1]);   // „1“, „P1“, „Probe 1“ (Codex, PR #1)
       // nur die Zellen, die hier ausgewertet werden, sind „erledigt“ – die übrigen prüft der allgemeine Durchlauf (Codex, PR #1)
       for (const i of [iP, iS, iL, ...wSp.map(w => w.i)]) if (i >= 0 && z[i]) tabSegs.add(z[i].id);
       probeMarke(z[iP], nm.index + nm[0].length - nm[1].length, nm.index + nm[0].length, n, false);
