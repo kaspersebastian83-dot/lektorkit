@@ -438,6 +438,9 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       return [LektorKern.analysieren(seg('Gemessen wurden 12 µg/cm² in Probe 1, in Probe 2 ebenfalls.'), d).marken.find(m => m.art === 'wert').status,
         LektorKern.analysieren(seg('Auftraggeber ist die Fremd Versicherung AG.'), d).marken.map(m => m.art + ':' + m.status)]; });
     assert.deepEqual(k13, ['ohne', ['name:fremd']]);
+    const k15 = await page.evaluate(() => { const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12', q: 'gemessen', v: 12, bericht: 'AR-1' }, { label: 'P2', p: 'Chlorid', u: 'µg/cm²', roh: '3', q: 'gemessen', v: 3, bericht: 'AR-1' }] };
+      return ['Gemessen wurden 12 µg/cm² in Probe 1, 13 µg/cm² in Probe 2.', 'Gemessen wurden 12 µg/cm² in Probe 1 und 3 µg/cm² in Probe 2.'].map(x => LektorKern.analysieren({ bloecke: [], segs: [{ id: 0, text: x, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] }, d).marken.filter(m => m.art === 'wert').map(m => m.probe + ':' + m.status).join(' ')); });
+    assert.deepEqual(k15, ['P1:belegt P2:abweicht', 'P1:belegt P2:belegt']);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);

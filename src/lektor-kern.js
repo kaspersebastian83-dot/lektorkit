@@ -145,10 +145,12 @@ const EINHEIT = String.raw`[µμ]g\s?\/\s?100\s?cm(?:²|2)|[µμ]g\s?\/\s?cm(?:�
 const ZAHL = String.raw`\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?`;
 // Ergebnis wie im Prüfbericht: Zahl (auch mit „<“/„>“) oder „n. n.“ / „unter BG“ – dieselben Formen wie A.ergebnis (Codex, PR #1)
 const WERT_RE = new RegExp(String.raw`(?<![\p{L}\d.,\-\/])(?:(<|>)\s*)?(${ZAHL}|n\.\s?n\.|unter\s+BG)\s?(${EINHEIT})`, 'giu');   // groß/klein egal wie A.ergebnis („Unter BG“, „N. n.“)
+const NAECHSTER_WERT = new RegExp(String.raw`^\s*(?:[,;\/]|und\b|sowie\b)\s*(?:[<>]\s*)?(?:${ZAHL}|n\.\s?n\.|unter\s+BG)\s?(?:${EINHEIT})`, 'iu');
 const SPANNE_VOR = new RegExp(String.raw`\d(?:\s?(?:${EINHEIT}))?\s*(?:bis|–|—|-)\s*$`, 'u');
 const PRUEF_EINHEIT = /^(?:[µμ]g\/100cm2|[µμ]g\/cm2|mg\/m2|[µμ]g\/m2|ng\/m2|mg\/kg|M\.?-%)$/i;
 const einheitKurz = u => tidy(u).replace(/μ/g, 'µ').replace(/²/g, '2').replace(/\s+/g, '');
-const PROBEN_RE = /(?<![\p{L}\d])(\p{L}*?[Pp]roben?)\s+(\d{1,4}(?:\s*(?:,|und|bis|sowie)\s*\d{1,4})*)(?![\d]|,\d)/gu;
+// Liste „2, 3 und 5“ – eine Zahl mit Einheit danach („Probe 1, 13 µg/cm²“) gehört nicht mehr dazu (Codex, PR #1)
+const PROBEN_RE = new RegExp(String.raw`(?<![\p{L}\d])(\p{L}*?[Pp]roben?)\s+(\d{1,4}(?:\s*(?:,|und|bis|sowie)\s*\d{1,4}(?!\d|[,.]\d|\s?(?:${EINHEIT})))*)(?![\d]|,\d)`, 'gu');
 const P_RE = /(?<![\p{L}\d\-])P(\d{1,4})(?![\p{L}\d\-])/gu;   // nicht „P1“ in „AB-P1-123-01“ (Codex, PR #1)
 const PB_RE = /(?<![\w\-])([A-Z]{2,4}(?:-[A-Z0-9]{1,12}){3,})(?![\w\-])/g;
 const ANL_RE = /(?<![\p{L}])Anlagen?\s+(\d{1,2}(?:\s*(?:,|und|bis)\s*\d{1,2})*)(?![\d:])/gu;
@@ -416,7 +418,9 @@ function analysieren(doc, d){
         if (bg && !inTab){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Brandgeruch-Prüfung – keine Laborwerte.' }); continue; }
         const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4}))/u.exec(nach);
         // folgt nach der Nummer eine weitere Probe („, Probe 2“, „, 2“, „P2“, „und“, „bis“, „sowie“, „/“), ist die Zuordnung nicht eindeutig
-        const weitere = dicht && /^\s*(?:[,;\/]\s*(?:in\s+(?:der\s+)?)?(?:\p{L}*probe\s+|P)?\d|und\b|bis\b|sowie\b|oder\b|&)/iu.test(nach.slice(dicht[0].length));
+        const rest = dicht ? nach.slice(dicht[0].length) : '';
+        // … aber „, 13 µg/cm² in Probe 2“ ist ein eigener Messwert, keine weitere Probe (Codex, PR #1)
+        const weitere = dicht && /^\s*(?:[,;\/]\s*(?:in\s+(?:der\s+)?)?(?:\p{L}*probe\s+|P)?\d|und\b|bis\b|sowie\b|oder\b|&)/iu.test(rest) && !NAECHSTER_WERT.test(rest);
         let n = null, grund = '';
         if (dicht && !weitere) n = Number(dicht[1] || dicht[2]);
         else if (dicht) grund = 'Mehrere Proben – die Zahl lässt sich nicht sicher einer Probe zuordnen.';
