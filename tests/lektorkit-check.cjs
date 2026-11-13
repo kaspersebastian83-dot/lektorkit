@@ -426,6 +426,13 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       await LektorKitTest.lesen(new File([Uint8Array.from(atob(b), c => c.charCodeAt(0))], 'hand.docx')); const doc = !!LektorKitTest.zustand().doc;
       await p; await LektorKitTest.warteAndere(); return [versteckt, doc, LektorKitTest.zustand().daten.projekt.name]; }, docxVonHand(['P1 12,3 µg/cm²']).toString('base64'));
     assert.deepEqual(lade, [true, false, '99.9002 Brandweg Beispielstadt Tst']);
+    // Projekt lässt sich nicht lesen: es gilt trotzdem dieses (mit Hinweisen), nie die Daten des vorigen
+    const kaputt = await page.evaluate(async b => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      const falsch = { name: '99.9999 Kaputt Tst', kind: 'directory', values(){ throw new Error('Zugriff verweigert'); }, entries(){ throw new Error('Zugriff verweigert'); }, getDirectoryHandle(){ throw new Error('Zugriff verweigert'); }, getFileHandle(){ throw new Error('Zugriff verweigert'); } };
+      await LektorKitTest.oeffnen(falsch, archiv);
+      await LektorKitTest.lesen(new File([Uint8Array.from(atob(b), c => c.charCodeAt(0))], 'hand.docx'));
+      const S = LektorKitTest.zustand(); return [S.dir && S.dir.name, S.daten && S.daten.projekt.name, (S.daten && S.daten.hinweise || []).some(h => /nicht lesbar/.test(h))]; }, docxVonHand(['P1 12,3 µg/cm²']).toString('base64'));
+    assert.deepEqual(kaputt, ['99.9999 Kaputt Tst', '99.9999 Kaputt Tst', true], 'nie mit den Daten des vorigen Projekts');
     const mv = await page.evaluate(() => { const x = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:moveFrom><w:r><w:t>alt 99 µg/cm² </w:t></w:r></w:moveFrom><w:moveTo><w:r><w:t>neu 12,3 µg/cm²</w:t></w:r></w:moveTo></w:p>';
       return LektorKern.absatzText(new DOMParser().parseFromString(x, 'application/xml').documentElement); });
     assert.equal(mv, 'neu 12,3 µg/cm²');

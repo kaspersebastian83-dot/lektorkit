@@ -178,7 +178,8 @@ async function oeffnen(dir, archiv, wunsch){
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
   let daten;
   try{ daten = await projektLesen(dir); }
-  catch(e){ if (!veraltet()){ S.laedt = false; meldung(`„${dir.name}“ lässt sich nicht lesen: ${e.message}`); } return null; }
+  catch(e){ if (!veraltet()){ S.dir = null; S.daten = null; S.archiv = null; S.laedt = false; $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>nicht lesbar</span>`;
+    meldung(`„${dir.name}“ lässt sich nicht lesen: ${e.message}`); } return null; }   // nie mit dem vorigen Projekt weiterarbeiten (Codex, PR #1)
   if (veraltet()) return null;
   let gewollt = [], gewolltFehler = '';
   try{ gewollt = (await gewolltLesen(dir)).liste; }catch(e){ gewolltFehler = e.message; }
