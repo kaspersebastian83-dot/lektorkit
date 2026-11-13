@@ -1662,13 +1662,15 @@ async function kuerzelHolen(){
   return new Promise(ok => { dlg.onclose = () => { const k = dlg.returnValue === 'ok' ? tidy(personen.length ? sel.value : txt.value) : '';
     if (k) try{ localStorage.setItem('lektorkit-kuerzel', k); }catch(e){} ok(k); }; dlg.showModal(); });
 }
+/** Kalendertag hier (nicht UTC – kurz nach Mitternacht sonst der Vortag; Codex, PR #1). */
+const heute = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 /* Schreibvorgänge nacheinander: zwei schnelle Klicks lesen sonst denselben alten Stand und der zweite überschreibt den ersten (Codex, PR #1). */
 let schreibKette = Promise.resolve();
 const nacheinander = fn => (schreibKette = schreibKette.then(fn, fn));
 async function alsGewollt(id){
   const m = S.erg.marken[id]; if (!m) return;
   const kuerzel = await kuerzelHolen(); if (!kuerzel) return;
-  const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: new Date().toISOString().slice(0, 10) };
+  const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: heute() };
   return gebunden(l => l.filter(g => g.schluessel !== eintrag.schluessel).concat([eintrag]), 'Nicht vermerkt: ');
 }
 async function zuruecknehmen(id){
@@ -1906,7 +1908,7 @@ async function sprung(){
 sprung();
 
 /* Für die Prüfungen (tests/lektorkit-check.cjs): dieselben Wege wie die Knöpfe, ohne Dateidialog. */
-window.LektorKitTest = { oeffnen, lesen, zustand: () => S, warteAndere: async () => { while (S.andereStatus === 'laeuft') await new Promise(r => setTimeout(r, 20)); } };
+window.LektorKitTest = { heute, oeffnen, lesen, zustand: () => S, warteAndere: async () => { while (S.andereStatus === 'laeuft') await new Promise(r => setTimeout(r, 20)); } };
 })();
 </script>
 </body>

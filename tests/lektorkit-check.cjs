@@ -279,6 +279,8 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     await page.waitForSelector('#dlgKuerzel[open]'); await page.selectOption('#selKuerzel', 'Tst'); await page.click('#dlgKuerzel button[value=ok]');
     await page.waitForFunction(() => LektorKitTest.zustand().erg.zaehler.gewollt === 1, null, { timeout: 5000 }).catch(async e => { console.log(await page.textContent('#uebersicht'), await page.textContent('#meldung')); throw e; });
     const datei2 = await page.evaluate(async () => { const r = await navigator.storage.getDirectory(); const d = await (await (await (await (await r.getDirectoryHandle('Archiv')).getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst')).getDirectoryHandle('_Spektron')).getDirectoryHandle('LektorKit')).getFileHandle('_LektorKit.json'); return JSON.parse(await (await d.getFile()).text()); });
+    assert.equal(await page.evaluate(() => LektorKitTest.heute(new Date(2026, 10, 14, 0, 30))), '2026-11-14', 'Ortstag, nicht UTC');
+    assert.equal(datei2.gewollt[0].am, await page.evaluate(() => LektorKitTest.heute()));
     assert.equal(datei2.format, 'spektron-lektorkit'); assert.equal(datei2.gewollt.length, 1); assert.equal(datei2.gewollt[0].kuerzel, 'Tst'); assert.match(datei2.gewollt[0].am, /^\d{4}-\d{2}-\d{2}$/); assert.equal(datei2.gewollt[0].datei, 'hand.docx');
     assert.equal(await page.textContent('#kopfzeile'), 'Keine offene Abweichung (1 als gewollt bestätigt)');
     await schuss('h-von-hand-gewollt');
