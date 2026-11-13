@@ -108,7 +108,7 @@ async function docxLesen(bytes){
 const EINHEIT = String.raw`[µμ]g\s?\/\s?100\s?cm(?:²|2)|[µμ]g\s?\/\s?cm(?:²|2)|mg\s?\/\s?m(?:²|2)|[µμ]g\s?\/\s?m(?:²|2)|ng\s?\/\s?m(?:²|2)|mg\s?\/\s?kg|M\.?-\s?%|m(?:²|2)(?![\p{L}\d\/])|°C`;
 const ZAHL = String.raw`\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?`;
 // Ergebnis wie im Prüfbericht: Zahl (auch mit „<“/„>“) oder „n. n.“ / „unter BG“ – dieselben Formen wie A.ergebnis (Codex, PR #1)
-const WERT_RE = new RegExp(String.raw`(?<![\p{L}\d.,\-\/])(?:(<|>)\s*)?(${ZAHL}|n\.\s?n\.|unter\s+BG)\s?(${EINHEIT})`, 'gu');
+const WERT_RE = new RegExp(String.raw`(?<![\p{L}\d.,\-\/])(?:(<|>)\s*)?(${ZAHL}|n\.\s?n\.|unter\s+BG)\s?(${EINHEIT})`, 'giu');   // groß/klein egal wie A.ergebnis („Unter BG“, „N. n.“)
 const SPANNE_VOR = new RegExp(String.raw`\d(?:\s?(?:${EINHEIT}))?\s*(?:bis|–|—|-)\s*$`, 'u');
 const PRUEF_EINHEIT = /^(?:[µμ]g\/100cm2|[µμ]g\/cm2|mg\/m2|[µμ]g\/m2|ng\/m2|mg\/kg|M\.?-%)$/i;
 const einheitKurz = u => tidy(u).replace(/μ/g, 'µ').replace(/²/g, '2').replace(/\s+/g, '');

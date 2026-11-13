@@ -409,6 +409,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       return ['Die Werte liegen zwischen 4,1 und 12,3 µg/cm² in Probe 1.', 'In Probe 1 wurden 4,1–12,3 µg/cm² gemessen.', 'In Probe 1 wurden 4,1 µg/cm² bis 12,3 µg/cm² gemessen.', 'In Probe 1 wurden 12,3 µg/cm² gemessen.']
         .map(t => LektorKern.analysieren({ bloecke: [], segs: [seg(t)] }, d).marken.filter(m => m.art === 'wert').map(m => m.text + ':' + m.status).join(' ')); });
     assert.deepEqual(sp, ['12,3 µg/cm²:ohne', '12,3 µg/cm²:ohne', '4,1 µg/cm²:ohne 12,3 µg/cm²:ohne', '12,3 µg/cm²:belegt']);
+    const gk = await page.evaluate(() => { const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '< 0,5', q: 'unter', v: 0.5, bericht: 'AR-1' }], berichte: [] };
+      return LektorKern.analysieren({ bloecke: [], segs: [{ id: 0, text: 'Probe 1: Unter BG µg/cm².', art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] }, d).marken.filter(m => m.art === 'wert').map(m => m.text + ':' + m.status); });
+    assert.deepEqual(gk, ['Unter BG µg/cm²:belegt']);
+    // anderes Projekt öffnen, während ein Bericht zu sehen ist: der alte Bericht verschwindet sofort
+    await pruefen(BR1.ordner);
+    const weg = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      const p = LektorKitTest.oeffnen(await archiv.getDirectoryHandle('25.0100 Altweg 3 Altstadt Tst'), archiv);
+      const sofort = document.getElementById('haupt').classList.contains('versteckt'); await p; await LektorKitTest.warteAndere();
+      return [sofort, document.getElementById('haupt').classList.contains('versteckt'), LektorKitTest.zustand().erg]; });
+    assert.deepEqual(weg, [true, true, null]);
     const mv = await page.evaluate(() => { const x = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:moveFrom><w:r><w:t>alt 99 µg/cm² </w:t></w:r></w:moveFrom><w:moveTo><w:r><w:t>neu 12,3 µg/cm²</w:t></w:r></w:moveTo></w:p>';
       return LektorKern.absatzText(new DOMParser().parseFromString(x, 'application/xml').documentElement); });
     assert.equal(mv, 'neu 12,3 µg/cm²');

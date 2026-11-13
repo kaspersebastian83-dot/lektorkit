@@ -172,7 +172,9 @@ const recht = async (h, fragen) => { if (!h.queryPermission) return true; let p 
 async function oeffnen(dir, archiv, wunsch){
   // Jeder Aufruf bekommt eine Nummer; ein älterer, langsamerer Lauf schreibt nichts mehr in den Zustand (Codex, PR #1)
   const lauf = ++S.oeffnenLauf, veraltet = () => lauf !== S.oeffnenLauf;
-  S.andereLauf++; S.lesenLauf++; S.doc = null;
+  // der Bericht des vorigen Projekts verschwindet sofort – nichts davon darf unter dem neuen Projekt stehen bleiben (Codex, PR #1)
+  S.andereLauf++; S.lesenLauf++; S.doc = null; S.erg = null; S.bericht = null; S.gewaehlt = null;
+  $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); $('berichtWahl').classList.add('versteckt');
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
   const daten = await projektLesen(dir); if (veraltet()) return null;
   let gewollt = [], gewolltFehler = '';
