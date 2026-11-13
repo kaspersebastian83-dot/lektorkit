@@ -1,0 +1,468 @@
+{
+ "erzeugt": "tests/vorlage-berichtkit.cjs aus BerichtKit 4121cca (erfundene Testdaten BR1_voll_Versicherung)",
+ "ordner": "99.9002 Brandweg Beispielstadt Tst",
+ "pj": {
+  "format": "mosaik-projekt",
+  "version": 1,
+  "projektnummer": "99.9002",
+  "schadenort": "Beispielstadt",
+  "objekt": "Erdgeschoss links, Brandweg 7, 54321 Beispielstadt",
+  "nutzung": "Wohnen",
+  "auftraggeber": "Beispiel Versicherung AG, Versicherungsallee 1, 54321 Beispielstadt",
+  "schadennummer": "BV-2026-0815",
+  "auftragsdatum": "2026-10-05",
+  "versicherungsnehmer": "Muster Hausverwaltung GmbH, Hauptstr. 5, 12345 Musterstadt",
+  "zustaendig": {
+   "kuerzel": "Tst"
+  },
+  "schadendatum": "2026-10-12",
+  "ortstermin": "2026-10-14",
+  "schadenereignis": "Brand im Erdgeschoss (Küche)",
+  "brandgut": "Küche/Lebensmittel"
+ },
+ "lk": {
+  "version": "4.51.0",
+  "projekt": {
+   "nr": "99.9002"
+  },
+  "ui": {},
+  "proben": [
+   {
+    "id": 4,
+    "_nr": 4,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Brandraum Decke",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": ""
+   },
+   {
+    "id": 5,
+    "_nr": 5,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Flur Wand",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": ""
+   },
+   {
+    "id": 6,
+    "_nr": 6,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "OG Wohnzimmer REF Wand",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": ""
+   },
+   {
+    "id": 7,
+    "_nr": 7,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "F-EG Küche Wand",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": ""
+   },
+   {
+    "id": 8,
+    "_nr": 8,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Dämmung",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Material",
+    "cm2": "",
+    "notiz": ""
+   }
+  ],
+  "chloridProben": [
+   {
+    "id": 1,
+    "_nr": 1,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Brandraum Decke",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": "",
+    "chloridNr": 1
+   },
+   {
+    "id": 2,
+    "_nr": 2,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Flur Wand",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": "",
+    "chloridNr": 2
+   },
+   {
+    "id": 3,
+    "_nr": 3,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "OG Wohnzimmer REF Wand",
+    "z3": "verrußt",
+    "z4": "Putz",
+    "matrix": "Wischprobe",
+    "cm2": "600",
+    "notiz": "",
+    "chloridNr": 3
+   }
+  ],
+  "sonstigeProben": [],
+  "asbestProben": [
+   {
+    "id": 9,
+    "_nr": 9,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Boden",
+    "z3": "Fliesenkleber",
+    "z4": "fest gebunden",
+    "zustand": "intakt",
+    "matrix": "Bituminöse Proben / Kleber",
+    "cm2": "",
+    "notiz": ""
+   },
+   {
+    "id": 10,
+    "_nr": 10,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Wand",
+    "z3": "Putz",
+    "z4": "fest gebunden",
+    "zustand": "intakt",
+    "matrix": "Putze / Spachtelmassen",
+    "cm2": "",
+    "notiz": ""
+   },
+   {
+    "id": 11,
+    "_nr": 11,
+    "datum": "2026-10-14",
+    "z1": "99.9002",
+    "z2": "EG Küche Decke",
+    "z3": "Dämmstoff Mineralwolle",
+    "z4": "fest gebunden",
+    "zustand": "intakt",
+    "matrix": "Sonstige",
+    "cm2": "",
+    "notiz": ""
+   }
+  ],
+  "brandgeruchProben": [
+   {
+    "id": 1,
+    "z1": "Sofa Wohnzimmer",
+    "z2": "Stoffbezug",
+    "p1": "+",
+    "p2": "+",
+    "p3": "++",
+    "p4": "+",
+    "p5": "+"
+   },
+   {
+    "id": 2,
+    "z1": "Teppich Flur",
+    "z2": "Wolle",
+    "p1": "(+)",
+    "p2": "-",
+    "p3": "(+)",
+    "p4": "-",
+    "p5": "(+)"
+   }
+  ],
+  "brandgeruchDatum": "20.10.2026",
+  "bgBlind": false,
+  "pn98Proben": [],
+  "feldprotokolle": []
+ },
+ "erg": {
+  "format": "spektron-ergebnisse",
+  "version": 1,
+  "projekt": "99.9002",
+  "berichte": [
+   {
+    "id": "b1",
+    "bericht": "AR-999-2026-000101-01",
+    "labor": "Eurofins",
+    "auftragsreferenz": "99.9002 Beispielstadt",
+    "datum": "2026-10-20",
+    "sources": {
+     "xml": "AR-999-2026-000101-01.xml",
+     "pdf": "AR-999-2026-000101-01.pdf"
+    },
+    "proben": [
+     {
+      "label": "P1",
+      "ref": "Probe 1",
+      "labNr": "999-2026-0001101",
+      "typ": "Chlorid",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Chlorid",
+        "r": "12,3",
+        "u": "µg/cm²"
+       }
+      ]
+     },
+     {
+      "label": "P2",
+      "ref": "Probe 2",
+      "labNr": "999-2026-0001102",
+      "typ": "Chlorid",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Chlorid",
+        "r": "4,1",
+        "u": "µg/cm²"
+       }
+      ]
+     },
+     {
+      "label": "P3",
+      "ref": "Probe 3",
+      "labNr": "999-2026-0001103",
+      "typ": "Chlorid",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Chlorid",
+        "r": "< 0,5",
+        "u": "µg/cm²"
+       }
+      ]
+     },
+     {
+      "label": "P4",
+      "ref": "Probe 4",
+      "labNr": "999-2026-0001104",
+      "typ": "PAK",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Naphthalin",
+        "r": "< 0,5",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Benzo[a]pyren",
+        "r": "1,2",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Summe 16 EPA-PAK exkl. BG",
+        "r": "2300",
+        "u": "µg/m²"
+       }
+      ]
+     },
+     {
+      "label": "P5",
+      "ref": "Probe 5",
+      "labNr": "999-2026-0001105",
+      "typ": "PAK",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Naphthalin",
+        "r": "< 0,5",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Benzo[a]pyren",
+        "r": "1,2",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Summe 16 EPA-PAK exkl. BG",
+        "r": "85",
+        "u": "µg/m²"
+       }
+      ]
+     },
+     {
+      "label": "P6",
+      "ref": "Probe 6",
+      "labNr": "999-2026-0001106",
+      "typ": "PAK",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Naphthalin",
+        "r": "< 0,5",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Benzo[a]pyren",
+        "r": "1,2",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Summe 16 EPA-PAK exkl. BG",
+        "r": "9",
+        "u": "µg/m²"
+       }
+      ]
+     },
+     {
+      "label": "P7",
+      "ref": "Probe 7",
+      "labNr": "999-2026-0001107",
+      "typ": "PAK",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Naphthalin",
+        "r": "< 0,5",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Benzo[a]pyren",
+        "r": "1,2",
+        "u": "µg/m²"
+       },
+       {
+        "p": "Summe 16 EPA-PAK exkl. BG",
+        "r": "7",
+        "u": "µg/m²"
+       }
+      ]
+     },
+     {
+      "label": "P8",
+      "ref": "Probe 8",
+      "labNr": "999-2026-0001108",
+      "typ": "PAK",
+      "reportId": "b1",
+      "werte": [
+       {
+        "p": "Summe 16 EPA-PAK exkl. BG",
+        "r": "14",
+        "u": "mg/kg"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "b2",
+    "bericht": "AR-999-2026-000102-01",
+    "labor": "Eurofins",
+    "auftragsreferenz": "99.9002 Beispielstadt",
+    "datum": "2026-10-20",
+    "sources": {
+     "xml": "AR-999-2026-000102-01.xml",
+     "pdf": "AR-999-2026-000102-01.pdf"
+    },
+    "proben": [
+     {
+      "label": "P9",
+      "ref": "Probe 9",
+      "labNr": "999-2026-0001109",
+      "typ": "Asbest",
+      "reportId": "b2",
+      "werte": [
+       {
+        "p": "Asbestgehalt",
+        "r": "5 - 20",
+        "u": "%",
+        "nwg": "1 %"
+       },
+       {
+        "p": "Asbestart",
+        "r": "Chrysotil",
+        "u": "",
+        "nwg": "1 %"
+       },
+       {
+        "p": "Asbestgehalt",
+        "r": "-",
+        "u": "%",
+        "nwg": "0,1 %"
+       },
+       {
+        "p": "Asbestart",
+        "r": "-",
+        "u": "",
+        "nwg": "0,1 %"
+       }
+      ]
+     },
+     {
+      "label": "P10",
+      "ref": "Probe 10",
+      "labNr": "999-2026-0001110",
+      "typ": "Asbest",
+      "reportId": "b2",
+      "werte": [
+       {
+        "p": "Asbestgehalt",
+        "r": "-",
+        "u": "%",
+        "nwg": "1 %"
+       },
+       {
+        "p": "Asbestart",
+        "r": "Kein Asbest nachgewiesen",
+        "u": "",
+        "nwg": "0,001 %"
+       }
+      ]
+     },
+     {
+      "label": "P11",
+      "ref": "Probe 11",
+      "labNr": "999-2026-0001111",
+      "typ": "Asbest",
+      "reportId": "b2",
+      "werte": [
+       {
+        "p": "Asbestart",
+        "r": "Kein Asbest nachgewiesen",
+        "u": "",
+        "nwg": "1 %"
+       },
+       {
+        "p": "WHO-Fasern",
+        "r": "nachgewiesen",
+        "u": ""
+       },
+       {
+        "p": "Kanzerogenitätsindex KI",
+        "r": "26",
+        "u": ""
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "ersetzt": [],
+  "offen": [],
+  "hinweise": []
+ }
+}
