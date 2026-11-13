@@ -51,7 +51,7 @@ function teilBloecke(xml, teil, segs){
   lauf(teil === 'document' ? (kinder(wurzel, 'body')[0] || wurzel) : wurzel);
   return out;
 }
-/** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“). */
+/** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“), Fußzeilen ans Ende („Fußzeile“). */
 /** Einen einzelnen ZIP-Eintrag lesen (für word/_rels/document.xml.rels, das word-luecken.js nicht liefert); null, wenn er fehlt. */
 async function zipEintrag(bytes, gesucht){
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), u16 = i => b[i] | (b[i + 1] << 8), u32 = i => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
@@ -70,12 +70,13 @@ async function zipEintrag(bytes, gesucht){
   }
   return null;
 }
-/** Kopfzeilen, die ein Abschnitt des Dokuments wirklich benutzt (headerReference → Beziehung → Datei). Ohne lesbare Beziehungen: alle. */
-async function benutzteKopfzeilen(bytes, documentXml, alle){
+/** Kopf- bzw. Fußzeilen, die ein Abschnitt des Dokuments wirklich benutzt (header-/footerReference → Beziehung → Datei).
+    Ohne lesbare Beziehungen: alle. */
+async function benutzteKopfzeilen(bytes, documentXml, alle, verweis = 'headerReference'){
   // nach lokalem Namen, nicht nach Präfix oder Namensraum-URI – gilt für Transitional und Strict OOXML (Codex, PR #1)
   const doc = new DOMParser().parseFromString(documentXml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length) return alle;
-  const refs = [...doc.getElementsByTagNameNS('*', 'headerReference')];
+  const refs = [...doc.getElementsByTagNameNS('*', verweis)];
   const ids = refs.map(e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value).filter(Boolean);
   if (refs.length && ids.length !== refs.length) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
   let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
@@ -87,17 +88,22 @@ async function benutzteKopfzeilen(bytes, documentXml, alle){
   return alle.filter(n => benutzt.has(n));
 }
 async function docxLesen(bytes){
-  const teile = await root.WordLuecken.textteile(bytes), segs = [], bloecke = [];
-  // nur Kopfzeilen, die ein Abschnitt benutzt – liegengebliebene header*.xml zählen nicht (Codex, PR #1)
-  const kopf = (await benutzteKopfzeilen(bytes, teile['word/document.xml'], Object.keys(teile).filter(n => /^word\/header\d*\.xml$/.test(n)))).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  const teile = await root.WordLuecken.textteile(bytes), segs = [], bloecke = [], fuss = [];
+  const teil = re => Object.keys(teile).filter(n => re.test(n)), sortiert = l => l.sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  // nur Kopf-/Fußzeilen, die ein Abschnitt benutzt – liegengebliebene Teile zählen nicht; Fußzeilen werden gelesen wie Kopfzeilen (Codex, PR #1)
+  const kopf = sortiert(await benutzteKopfzeilen(bytes, teile['word/document.xml'], teil(/^word\/header\d*\.xml$/), 'headerReference'));
+  const fusz = sortiert(await benutzteKopfzeilen(bytes, teile['word/document.xml'], teil(/^word\/footer\d*\.xml$/), 'footerReference'));
   const gesehen = new Set();
-  for (const n of kopf) for (const b of teilBloecke(teile[n], 'kopf', segs)){
-    const key = b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text)));
-    // doppelte Kopfzeile (erste Seite / Folgeseiten): ganz weglassen, auch die Zellen einer Tabelle (Codex, PR #1)
-    if (!key || gesehen.has(key)){ for (const s of b.typ === 'p' ? [b.seg] : b.zeilen.flat()) s.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
+  const randLesen = (namen, art, ziel) => { for (const n of namen) for (const b of teilBloecke(teile[n], 'kopf', segs)){
+    const key = art + (b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text))));
+    // doppelte Kopf-/Fußzeile (erste Seite / Folgeseiten): ganz weglassen, auch die Zellen einer Tabelle (Codex, PR #1)
+    if (key === art || gesehen.has(key)){ for (const s of b.typ === 'p' ? [b.seg] : b.zeilen.flat()) s.leer = true; continue; } gesehen.add(key); b.kopf = art; ziel.push(b); } };
+  randLesen(kopf, 'Kopfzeile', bloecke);
+  randLesen(fusz, 'Fußzeile', fuss);
   bloecke.push(...teilBloecke(teile['word/document.xml'], 'document', segs));
+  bloecke.push(...fuss);   // Fußzeilen am Ende
   let abschnitt = '', titel = '';
-  for (const b of bloecke){ if (b.kopf){ b.abschnitt = 'Kopfzeile'; continue; }
+  for (const b of bloecke){ if (b.kopf){ b.abschnitt = b.kopf; continue; }
     // nur nummerierte Überschriften wechseln den Abschnitt („## Küche“-Zwischentitel bleiben im Abschnitt davor)
     if (b.typ === 'p' && b.ueb){ const m = /^(\d{1,2}(?:\.\d{1,2})*)\.?\s+(.*)$/.exec(b.seg.text.trim()); if (m){ abschnitt = m[1]; titel = m[2]; } }
     b.abschnitt = abschnitt; b.titel = titel; }

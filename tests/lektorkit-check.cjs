@@ -378,6 +378,15 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     z4['word/document.xml'] = Buffer.from(z4['word/document.xml'].toString().replace('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'http://purl.oclc.org/ooxml/wordprocessingml/main').replace('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'http://purl.oclc.org/ooxml/officeDocument/relationships'));
     const kt4 = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z4).toString('base64'));
     assert.match(kt4, /AB-2025-11111/); assert.doesNotMatch(kt4, /ZZ-2025-99999/);
+    // Fußzeile mit der Projektnummer eines anderen Projekts: gelesen und als „anderes Projekt“ gemeldet; unbenutzte Fußzeile nicht
+    const z5 = zipLesen(zipSchreiben(z2)), fussXml = n => `<?xml version="1.0"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Projekt ${n}</w:t></w:r></w:p></w:ftr>`;
+    z5['word/document.xml'] = Buffer.from(z5['word/document.xml'].toString().replace('</w:sectPr>', '<w:footerReference w:type="default" r:id="rId8"/></w:sectPr>'));
+    z5['word/_rels/document.xml.rels'] = Buffer.from(z5['word/_rels/document.xml.rels'].toString().replace('</Relationships>', '<Relationship Id="rId8" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>'));
+    z5['word/footer1.xml'] = Buffer.from(fussXml('99.9001')); z5['word/footer2.xml'] = Buffer.from(fussXml('99.8000'));
+    const fz = await page.evaluate(async b => { const doc = await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)));
+      const r = LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [], berichte: [], andere: LektorKern.andereIndex([{ name: '99.9001 Lindenweg Anderort Tst', nr: '99.9001', pj: null }, { name: '99.8000 Altbau Tst', nr: '99.8000', pj: null }], '99.9002') });
+      return r.marken.filter(m => m.art === 'projektnr').map(m => m.text + ':' + m.status + ':' + m.abschnitt); }, zipSchreiben(z5).toString('base64'));
+    assert.deepEqual(fz, ['99.9001:fremd:Fußzeile']);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
