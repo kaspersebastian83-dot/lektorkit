@@ -146,7 +146,7 @@ const nacheinander = fn => (schreibKette = schreibKette.then(fn, fn));
 async function alsGewollt(id){
   const m = S.erg.marken[id]; if (!m) return;
   const kuerzel = await kuerzelHolen(); if (!kuerzel) return;
-  const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: heute() };
+  const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, abdruck: m.abdruck, datei: S.bericht.name, kuerzel, am: heute() };
   return gebunden(l => l.filter(g => g.schluessel !== eintrag.schluessel).concat([eintrag]), 'Nicht vermerkt: ');
 }
 async function zuruecknehmen(id){

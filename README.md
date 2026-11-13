@@ -44,10 +44,10 @@ Nur die eigene Datei, und nur bei „Ist so gewollt“/„Zurücknehmen“:
 - Projekt vor Spektron: `Mitteilungen/_LektorKit.json` – **nie** einen `_Spektron`-Ordner anlegen (das würde das Projekt für alle Apps umschalten)
 
 ```json
-{ "format": "spektron-lektorkit", "version": 1, "gewollt": [ { "schluessel": "wert|5.2|P1|12 µg/cm²|Chlorid", "text": "12 µg/cm²", "befund": "…", "datei": "1._Mitteilung_26.0600_Entwurf.docx", "kuerzel": "Dr.Ka", "am": "2026-11-13" } ] }
+{ "format": "spektron-lektorkit", "version": 1, "gewollt": [ { "schluessel": "wert|5.2|P1|12 µg/cm²|Chlorid", "text": "12 µg/cm²", "befund": "…", "abdruck": "…", "datei": "1._Mitteilung_26.0600_Entwurf.docx", "kuerzel": "Dr.Ka", "am": "2026-11-13" } ] }
 ```
 
-Der Schlüssel enthält den Dateinamen nicht – eine Bestätigung gilt weiter, wenn aus `…_Entwurf.docx` die fertige Mitteilung wird. Vor dem Schreiben frisch gelesen (Bestätigungen von Kollegen bleiben), nach dem Schreiben zurückgelesen. Eine Datei in unbekanntem Format wird nie überschrieben. Kürzel: `localStorage` `lektorkit-kuerzel`, sonst „Ich bin“ der Projektzentrale (`spektron-ich`), sonst Auswahl aus `_Spektron-Mitarbeiter.json`.
+Der Schlüssel enthält den Dateinamen nicht (dieselbe Stelle zweimal im Abschnitt: ab der zweiten `|#2`, `|#3` …) – eine Bestätigung gilt weiter, wenn aus `…_Entwurf.docx` die fertige Mitteilung wird. Vor dem Schreiben frisch gelesen (Bestätigungen von Kollegen bleiben), nach dem Schreiben zurückgelesen. Die Bestätigung gilt nur, solange Befund, Hinweis und Beleg (`abdruck`) gleich sind – kommt z. B. statt -02 eine -03, ist die Stelle wieder offen. Eine Datei in unbekanntem Format wird nie überschrieben. Kürzel: `localStorage` `lektorkit-kuerzel`, sonst „Ich bin“ der Projektzentrale (`spektron-ich`), sonst Auswahl aus `_Spektron-Mitarbeiter.json`.
 
 ## Aufbau
 

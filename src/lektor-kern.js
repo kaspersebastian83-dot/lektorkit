@@ -282,6 +282,7 @@ function datenAufbereiten(d){
 }
 
 /* ---------- Analyse ---------- */
+const abdruck = m => JSON.stringify([m.befund || m.titel || '', m.notiz || '', m.beleg || []]);   // was zur Zeit von „Ist so gewollt“ galt
 const ICON = { belegt: 'ok', abweicht: 'warn', fremd: 'x', ohne: '', gewollt: 'ok' };
 function analysieren(doc, d){
   const P = datenAufbereiten(d), marken = [], nichtPruefbar = [];
@@ -558,14 +559,17 @@ function analysieren(doc, d){
   }
 
   /* --- „Ist so gewollt“ anwenden, zählen --- */
+  // gleiche Stelle zweimal im selben Abschnitt: ab dem zweiten Vorkommen eine laufende Nummer im Schlüssel, damit jede ihren eigenen Vermerk hat (Codex, PR #1)
+  marken.sort((a, b) => a.seg - b.seg || a.von - b.von);
+  const vorkommen = new Map(); for (const m of marken){ const n = vorkommen.get(m.schluessel) || 0; vorkommen.set(m.schluessel, n + 1); if (n) m.schluessel += '|#' + (n + 1); }
   const gewollt = new Map((d.gewollt || []).map(g => [g.schluessel, g]));
-  // gilt nur, solange der Befund derselbe ist – ändern sich Laborwert, LabelKit oder Projektdaten, ist die Stelle wieder offen (Codex, PR #1)
-  for (const m of marken){ m.icon = ICON[m.status]; const g = gewollt.get(m.schluessel);
-    if ((m.status === 'abweicht' || m.status === 'fremd') && g && g.befund === (m.befund || m.titel)) m.gewollt = g; }
+  // gilt nur, solange Befund, Hinweis und Beleg dieselben sind – ändern sich Laborwert, neuere Fassung, LabelKit oder Projektdaten, ist die Stelle wieder offen (Codex, PR #1)
+  for (const m of marken){ m.icon = ICON[m.status]; m.abdruck = abdruck(m); const g = gewollt.get(m.schluessel);
+    if ((m.status === 'abweicht' || m.status === 'fremd') && g && g.befund === (m.befund || m.titel) && g.abdruck === m.abdruck) m.gewollt = g; }
   const z = { belegt: 0, abweicht: 0, fremd: 0, ohne: 0, gewollt: 0 };
   for (const m of marken){ if (m.gewollt) z.gewollt++; else z[m.status]++; }
   const np = new Map(); for (const m of marken) if (m.nichtPruefbar) np.set(m.nichtPruefbar, (np.get(m.nichtPruefbar) || 0) + 1);
-  marken.sort((a, b) => a.seg - b.seg || a.von - b.von); marken.forEach((m, i) => { m.id = i; });   // Nummer = Platz in der Liste (Oberfläche greift über die Nummer zu)
+  marken.forEach((m, i) => { m.id = i; });   // Nummer = Platz in der Liste (Oberfläche greift über die Nummer zu)
   return { marken, zaehler: z, nichtPruefbar: [...np].map(([grund, n]) => ({ grund, n })), anlagenListe: [...anlagenListe] };
 }
 

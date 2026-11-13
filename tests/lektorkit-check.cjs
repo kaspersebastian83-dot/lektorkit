@@ -502,10 +502,20 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       const a = LektorKern.analysieren(seg('Siehe Prüfbericht AR-1-2-01.'), { ...basis, messungen: [] }).marken.map(m => m.status);
       const w = v => ({ ...basis, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: v, q: 'gemessen', v: Number(v.replace(',', '.')), bericht: 'AR-1-2-01' }] });
       const r1 = LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), w('12,3')), m1 = r1.marken.find(m => m.art === 'wert');
-      const g = [{ schluessel: m1.schluessel, befund: m1.befund, kuerzel: 'Tst', am: '2026-11-13' }];
+      const g = [{ schluessel: m1.schluessel, befund: m1.befund, abdruck: m1.abdruck, kuerzel: 'Tst', am: '2026-11-13' }];
       return [a, !!LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), { ...w('12,3'), gewollt: g }).marken.find(m => m.art === 'wert').gewollt,
         !!LektorKern.analysieren(seg('In Probe 1 wurden 12 µg/cm² gemessen.'), { ...w('15,0'), gewollt: g }).marken.find(m => m.art === 'wert').gewollt]; });
     assert.deepEqual(k8, [['belegt'], true, false]);
+    // „gewollt“ für „-01 ist überholt (durch -02)“ gilt nicht mehr, wenn statt -02 eine -03 daliegt; dieselbe Stelle zweimal im Abschnitt: jede hat ihren eigenen Vermerk
+    const k33 = await page.evaluate(() => { const seg = (...t) => ({ bloecke: [], segs: t.map((x, i) => ({ id: i, text: x, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' })) });
+      const pb = n => ({ projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [], berichte: [{ code: 'QR-1-2-01', grund: 'QR-1-2', fassung: 1, fremd: '' }, { code: 'QR-1-2-0' + n, grund: 'QR-1-2', fassung: n, fremd: '' }] });
+      const m2 = LektorKern.analysieren(seg('Siehe Prüfbericht QR-1-2-01.'), pb(2)).marken[0], g = [{ schluessel: m2.schluessel, befund: m2.befund || m2.titel, abdruck: m2.abdruck }];
+      const zwei = LektorKern.analysieren(seg('Siehe Prüfbericht QR-1-2-01.'), { ...pb(2), gewollt: g }).marken[0].gewollt, drei = LektorKern.analysieren(seg('Siehe Prüfbericht QR-1-2-01.'), { ...pb(3), gewollt: g }).marken[0].gewollt;
+      const w = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '15,0', q: 'gemessen', v: 15, bericht: 'AR-1' }] };
+      const s2 = seg('In Probe 1 wurden 12 µg/cm² gemessen.', 'Nochmals: in Probe 1 wurden 12 µg/cm² gemessen.');
+      const r = LektorKern.analysieren(s2, w).marken.filter(m => m.art === 'wert'), h = [{ schluessel: r[1].schluessel, befund: r[1].befund || r[1].titel, abdruck: r[1].abdruck }];
+      return [m2.status, !!zwei, !!drei, r.length, r[0].schluessel !== r[1].schluessel, LektorKern.analysieren(s2, { ...w, gewollt: h }).marken.filter(m => m.art === 'wert').map(m => !!m.gewollt)]; });
+    assert.deepEqual(k33, ['abweicht', true, false, 2, true, [false, true]]);
     // Spannen sind keine Messwerte; verschobener Alttext (moveFrom) zählt nicht
     const sp = await page.evaluate(() => { const seg = t => ({ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' });
       const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12,3', q: 'gemessen', v: 12.3, bericht: 'AR-1' }], berichte: [] };
