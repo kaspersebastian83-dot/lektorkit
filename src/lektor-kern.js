@@ -52,9 +52,37 @@ function teilBloecke(xml, teil, segs){
   return out;
 }
 /** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“). */
+/** Einen einzelnen ZIP-Eintrag lesen (für word/_rels/document.xml.rels, das word-luecken.js nicht liefert); null, wenn er fehlt. */
+async function zipEintrag(bytes, gesucht){
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), u16 = i => b[i] | (b[i + 1] << 8), u32 = i => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
+  let ende = -1; for (let i = b.length - 22; i >= 0 && i >= b.length - 22 - 0xffff; i--) if (u32(i) === 0x06054b50){ ende = i; break; }
+  if (ende < 0) return null;
+  let p = u32(ende + 16); const dec = new TextDecoder();
+  for (let n = 0, k = u16(ende + 10); n < k && p + 46 <= b.length && u32(p) === 0x02014b50; n++){
+    const methode = u16(p + 10), groesse = u32(p + 20), nl = u16(p + 28), lokal = u32(p + 42), name = dec.decode(b.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + u16(p + 30) + u16(p + 32);
+    if (name !== gesucht) continue;
+    const von = lokal + 30 + u16(lokal + 26) + u16(lokal + 28), roh = b.subarray(von, von + groesse);
+    if (methode === 0) return dec.decode(roh);
+    if (methode !== 8) return null;
+    const strom = new Blob([roh]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return dec.decode(new Uint8Array(await new Response(strom).arrayBuffer()));
+  }
+  return null;
+}
+/** Kopfzeilen, die ein Abschnitt des Dokuments wirklich benutzt (headerReference → Beziehung → Datei). Ohne lesbare Beziehungen: alle. */
+async function benutzteKopfzeilen(bytes, documentXml, alle){
+  const ids = [...documentXml.matchAll(/<w:headerReference\b[^>]*\br:id="([^"]+)"/g)].map(m => m[1]);
+  let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
+  if (!rels) return alle;
+  const ziel = new Map([...rels.matchAll(/<Relationship\b[^>]*>/g)].map(m => [(/\bId="([^"]+)"/.exec(m[0]) || [])[1], (/\bTarget="([^"]+)"/.exec(m[0]) || [])[1]]));
+  const benutzt = new Set(ids.map(id => ziel.get(id)).filter(Boolean).map(t => 'word/' + t.replace(/^\/?(?:word\/)?/, '')));
+  return alle.filter(n => benutzt.has(n));
+}
 async function docxLesen(bytes){
   const teile = await root.WordLuecken.textteile(bytes), segs = [], bloecke = [];
-  const kopf = Object.keys(teile).filter(n => /^word\/header\d*\.xml$/.test(n)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  // nur Kopfzeilen, die ein Abschnitt benutzt – liegengebliebene header*.xml zählen nicht (Codex, PR #1)
+  const kopf = (await benutzteKopfzeilen(bytes, teile['word/document.xml'], Object.keys(teile).filter(n => /^word\/header\d*\.xml$/.test(n)))).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
   const gesehen = new Set();
   for (const n of kopf) for (const b of teilBloecke(teile[n], 'kopf', segs)){
     const key = b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text)));
@@ -241,7 +269,7 @@ function analysieren(doc, d){
   };
   const raumMarke = (seg, von, bis, n, bg) => {
     const roh = seg.text.slice(von, bis), t = roh.replace(/,\s*Tiefe\b.*$/i, '').trim();
-    if (!t || /^(Material|Referenz|Freimessung|vorläufig)\b/i.test(t) || !frei(seg, von, von + t.length)) return;
+    if (!t || /^(Material|Referenz|Freimessung|vorläufig)\b/i.test(t) || /^(?:\p{L}*probe|P)\s*\d/iu.test(t) || !frei(seg, von, von + t.length)) return;   // „(Probe 1, Probe 2)“: keine Stelle
     const i = probeInfo(n, bg); if (!i.da || i.doppelt) return;
     const soll = bg ? i.text : i.raum; if (!soll) return;
     const k = R.beschreibungKey(t), ok = [soll, R.raumAusschreiben(soll).text].some(x => R.beschreibungKey(x) === k);
@@ -334,10 +362,14 @@ function analysieren(doc, d){
         const von = sz.von + m.index, bis = von + m[0].length; if (!frei(seg, von, bis)) continue;
         const roh = (m[1] ? m[1] + ' ' : '') + m[2], u = m[3];
         if (bg && !inTab){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Brandgeruch-Prüfung – keine Laborwerte.' }); continue; }
-        const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})(?!\s*(?:,\s*\d|und|bis))|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4})(?!\s*(?:,\s*\d|und|bis)))/u.exec(nach);
+        const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4}))/u.exec(nach);
+        // folgt nach der Nummer eine weitere Probe („, Probe 2“, „, 2“, „P2“, „und“, „bis“, „sowie“, „/“), ist die Zuordnung nicht eindeutig
+        const weitere = dicht && /^\s*(?:[,;\/]\s*(?:\p{L}*probe\s+|P)?\d|und\b|bis\b|sowie\b|oder\b|&)/iu.test(nach.slice(dicht[0].length));
         let n = null, grund = '';
-        if (dicht) n = Number(dicht[1] || dicht[2]);
-        else if (proben.size === 1) n = [...proben][0];
+        if (dicht && !weitere) n = Number(dicht[1] || dicht[2]);
+        else if (dicht) grund = 'Mehrere Proben – die Zahl lässt sich nicht sicher einer Probe zuordnen.';
+        else if (proben.size === 1 && !grund) n = [...proben][0];
+        else if (grund) {}
         else if (proben.size > 1) grund = 'Mehrere Proben im Satz – die Zahl lässt sich nicht sicher einer Probe zuordnen.';
         else grund = 'Keiner Probe zugeordnet.';
         wertMarke(seg, von, bis, roh, u, n, kontextParam(satz, seg), grund);

@@ -8,7 +8,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const tidy = A.tidy;
 const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
-const S = { oeffnenLauf: 0, andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
+const S = { lesenLauf: 0, oeffnenLauf: 0, andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
 $('version').textContent = ' ' + K.VERSION;
 
 /* ---------- Ordner ---------- */
@@ -69,7 +69,8 @@ async function projektLesen(dir){
   D.pdfNamen = pdf.map(p => p.name);
   const vonErgebnis = new Set((datei && aktuell ? datei.berichte : []).map(b => b && b.sources && b.sources.pdf).filter(Boolean).map(n => n.normalize('NFC').toLowerCase()));
   D.pdfOhneXml = pdf.filter(p => p.tiefe === 0 && !xmlBasis.has(p.name.replace(/\.pdf$/i, '').normalize('NFC').toLowerCase()) && !vonErgebnis.has(p.name.normalize('NFC').toLowerCase())).map(p => p.name);
-  D.auftragsreferenzen = [...berichte.map(b => b.auftragsreferenz), ...(datei ? datei.berichte.map(b => b && b.auftragsreferenz) : [])].filter(Boolean);
+  // eigene Auftragsreferenzen: aus der Übernahme nur, was auch als Bericht gilt (aktuell oder Datei liegt noch da) – Codex, PR #1
+  D.auftragsreferenzen = [...berichte.map(b => b.auftragsreferenz), ...(datei ? datei.berichte.filter(b => b && (aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))).map(b => b.auftragsreferenz) : [])].filter(Boolean);
   if (datei && !aktuell) D.hinweise.push('Die ResultKit-Übernahme passt nicht mehr zum Ordner „Laborergebnisse“ – LektorKit prüft gegen die XML im Ordner. In ResultKit „Erneut übernehmen“.');
   if (!berichte.length && !datei) D.hinweise.push('Keine lesbaren Prüfberichte (XML) und keine ResultKit-Übernahme.');
   const m = await unterordner(dir, 'Mitteilungen'); D.mitDir = m; D.mitteilungen = [];
@@ -161,7 +162,7 @@ const recht = async (h, fragen) => { if (!h.queryPermission) return true; let p 
 async function oeffnen(dir, archiv, wunsch){
   // Jeder Aufruf bekommt eine Nummer; ein älterer, langsamerer Lauf schreibt nichts mehr in den Zustand (Codex, PR #1)
   const lauf = ++S.oeffnenLauf, veraltet = () => lauf !== S.oeffnenLauf;
-  S.andereLauf++; S.doc = null;
+  S.andereLauf++; S.lesenLauf++; S.doc = null;
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
   const daten = await projektLesen(dir); if (veraltet()) return;
   let gewollt = [], gewolltFehler = '';
@@ -195,11 +196,16 @@ async function andereVorbereiten(){
   if (S.doc) neuAuswerten();
 }
 async function lesen(datei){
-  let bytes, name, quelle;
-  if (datei){ bytes = await datei.arrayBuffer(); name = datei.name; quelle = 'abgelegt'; }
-  else { const x = S.daten.mitteilungen[Number($('selBericht').value)]; if (!x) return; const f = await x.h.getFile(); bytes = await f.arrayBuffer(); name = x.name; quelle = 'Mitteilungen'; }
-  try{ S.doc = await K.docxLesen(bytes); }catch(e){ meldung(`„${name}“ lässt sich nicht lesen: ${e.message}`); return; }
-  S.bericht = { name, quelle, datei: datei || null }; S.gelesenAm = new Date(); S.gewaehlt = null;
+  // eigene Laufnummer: ein langsamerer, älterer Lesevorgang (oder einer aus einem inzwischen gewechselten Projekt) wird verworfen (Codex, PR #1)
+  const lauf = ++S.lesenLauf, projekt = S.oeffnenLauf, veraltet = () => lauf !== S.lesenLauf || projekt !== S.oeffnenLauf;
+  let bytes, name, quelle, doc;
+  try{
+    if (datei){ bytes = await datei.arrayBuffer(); name = datei.name; quelle = 'abgelegt'; }
+    else { const x = S.daten.mitteilungen[Number($('selBericht').value)]; if (!x) return; const f = await x.h.getFile(); bytes = await f.arrayBuffer(); name = x.name; quelle = 'Mitteilungen'; }
+    doc = await K.docxLesen(bytes);
+  }catch(e){ if (!veraltet()) meldung(`„${name || 'Bericht'}“ lässt sich nicht lesen: ${e.message}`); return; }
+  if (veraltet()) return;
+  S.doc = doc; S.bericht = { name, quelle, datei: datei || null }; S.gelesenAm = new Date(); S.gewaehlt = null;
   $('start').classList.add('versteckt'); $('haupt').classList.remove('versteckt'); $('fuss').classList.remove('versteckt');
   neuAuswerten();
 }

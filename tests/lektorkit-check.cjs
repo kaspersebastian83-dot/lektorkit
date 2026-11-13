@@ -247,10 +247,11 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
   });
 
   await fall('g', 'zwei Proben, ein Wert → ohne Beleg', async () => {
-    const docx = docxErsetzen(BR1_DOCX, [['Die Ergebnisse sind in Tabelle 1 zusammengefasst.', 'An den Proben 1 und 2 wurden zusammen 16,4 µg/cm² ermittelt. Die Ergebnisse sind in Tabelle 1 zusammengefasst.']]);
+    const docx = docxErsetzen(BR1_DOCX, [['Die Ergebnisse sind in Tabelle 1 zusammengefasst.', 'An den Proben 1 und 2 wurden zusammen 16,4 µg/cm² ermittelt. Gemessen wurden 17,4 µg/cm² (Probe 1, Probe 2) und 18,4 µg/cm² in Probe 1 sowie 2. Die Ergebnisse sind in Tabelle 1 zusammengefasst.']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx }), ...archivBasis() }, MA);
-    const r = await pruefen(BR1.ordner), m = finde(r, 'wert', '16,4 µg/cm²');
-    assert.equal(m.length, 1); assert.equal(m[0].status, 'ohne'); assert.match(m[0].notiz, /Mehrere Proben/);
+    const r = await pruefen(BR1.ordner);
+    for (const w of ['16,4 µg/cm²', '17,4 µg/cm²', '18,4 µg/cm²']){ const m = finde(r, 'wert', w);
+      assert.equal(m.length, 1, w); assert.equal(m[0].status, 'ohne', w + ' ' + m[0].notiz); assert.match(m[0].notiz, /Mehrere Proben/); }
     assert.deepEqual(offen(r), [], 'ohne Beleg ist kein Problem:\n' + zeig(r)); assert.equal(r.kopf, 'Keine Abweichung gefunden');
   });
 
@@ -357,6 +358,19 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const z = zipLesen(docxVonHand(['Text'])); z['word/header1.xml'] = Buffer.from(kopf); z['word/header2.xml'] = Buffer.from(kopf);
     const segs = await page.evaluate(async b => { const d = await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0))); return d.segs.filter(s => !s.leer && /XY-2025/.test(s.text)).length; }, zipSchreiben(z).toString('base64'));
     assert.equal(segs, 1, 'doppelte Kopftabelle nur einmal');
+    // Kopfzeile, die kein Abschnitt benutzt (liegengebliebene header2.xml): nicht gelesen
+    const z2 = zipLesen(docxVonHand(['Text'])), W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    z2['word/document.xml'] = Buffer.from(`<?xml version="1.0"?><w:document ${W}><w:body><w:p><w:r><w:t>Text</w:t></w:r></w:p><w:sectPr><w:headerReference w:type="default" r:id="rId7"/></w:sectPr></w:body></w:document>`);
+    z2['word/_rels/document.xml.rels'] = Buffer.from('<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/></Relationships>');
+    z2['word/header1.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'AB-2025-11111')); z2['word/header2.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'ZZ-2025-99999'));
+    const kt = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z2).toString('base64'));
+    assert.match(kt, /AB-2025-11111/); assert.doesNotMatch(kt, /ZZ-2025-99999/);
+    // Bericht lesen und währenddessen ein anderes Projekt öffnen: der alte Bericht kommt nicht ins neue Projekt
+    const v = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv);
+      const a = LektorKitTest.lesen(), b = LektorKitTest.oeffnen(await archiv.getDirectoryHandle('25.0100 Altweg 3 Altstadt Tst'), archiv);
+      await Promise.all([a, b]); await LektorKitTest.warteAndere(); const S = LektorKitTest.zustand(); return [S.daten.projekt.name, S.doc ? 'Bericht' : 'keiner']; });
+    assert.deepEqual(v, ['25.0100 Altweg 3 Altstadt Tst', 'keiner']);
   });
 
   await fall('k', 'Prüfprotokoll auf einer Seite', async () => {
