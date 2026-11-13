@@ -478,9 +478,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     assert.ok(p4.length && p4.every(m => m.status === 'ohne' && /doppelt/.test(m.np)), JSON.stringify(p4));
     assert.ok(r4.zeilen.some(z => /warn/.test(z.k) && /Probennummer in LabelKit doppelt vergeben/.test(z.t)));
     // Prüfbericht nur als PDF-Dateiname: ganze Nummer, keine längere
-    const k5 = await page.evaluate(() => { const doc = { bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht ABC-1-2-30 und ABC-1-2-31.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] };
-      return LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], pdfNamen: ['ABC-1-2-300.pdf', 'Bericht ABC-1-2-31.pdf'], messungen: [] }).marken.map(m => m.text + ':' + m.status); });
-    assert.deepEqual(k5, ['ABC-1-2-30:ohne', 'ABC-1-2-31:belegt']);
+    const k5 = await page.evaluate(() => { const doc = { bloecke: [], segs: [{ id: 0, text: 'Siehe Prüfbericht ABC-1-2-30 und XYZ-1-2-31.', art: 'p', teil: 'document', abschnitt: '4', titel: 'Probenahme' }] };
+      return LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], pdfNamen: ['ABC-1-2-300.pdf', 'Bericht XYZ-1-2-31.pdf'], messungen: [] }).marken.map(m => m.text + ':' + m.status); });
+    assert.deepEqual(k5, ['ABC-1-2-30:ohne', 'XYZ-1-2-31:belegt']);
+    // neuere Fassung nur als PDF: die zitierte ist überholt; gleiches Datum in zwei Rollen: zwei Schlüssel
+    const k18 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '1', titel: 'Veranlassung' }] });
+      const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [], pdfNamen: ['ABC-1-2-01.pdf', 'ABC-1-2-02.pdf'], pj: { schadendatum: '2026-01-01', auftragsdatum: '2026-01-01' } };
+      const a = LektorKern.analysieren(seg('Siehe Prüfbericht ABC-1-2-01.'), d).marken.map(m => m.status + ':' + m.befund);
+      const k = LektorKern.analysieren(seg('Am 01.01.2026 kam es zu einem Brand. Am 01.01.2026 wurde unser Büro beauftragt.'), d).marken.filter(m => m.art === 'datum').map(m => m.schluessel);
+      return [a, new Set(k).size]; });
+    assert.deepEqual(k18, [['abweicht:Prüfbericht -01 ist überholt'], 2]);
     // -02 eines anderen Projekts macht die eigene -01 nicht „überholt“; „gewollt“ gilt nur für denselben Befund
     const k8 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] });
       const basis = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [{ code: 'AR-1-2-01', grund: 'AR-1-2', fassung: 1, fremd: '' }, { code: 'AR-1-2-02', grund: 'AR-1-2', fassung: 2, fremd: '99.9001', ref: '99.9001 Anderort' }] };

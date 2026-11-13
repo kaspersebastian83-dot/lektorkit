@@ -1478,6 +1478,10 @@ function analysieren(doc, d){
     // ganze Nummer im Dateinamen, keine längere („…-30“ ist nicht „…-300“, „…-01“ nicht „…-01-02“) – Codex, PR #1
     const strich = s => String(s).normalize('NFC').replace(/[\u2010-\u2015\u2212]/g, '-').toUpperCase(), cn = strich(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const pdf = (d.pdfNamen || []).find(n => new RegExp(`(?<![A-Z0-9-])${cn}(?!-?[A-Z0-9])`).test(strich(n)));
+    // liegt eine neuere Fassung nur als PDF im Ordner („ABC-1-2-02.pdf“), ist die zitierte überholt (Codex, PR #1)
+    const pdfNeuer = fa.fassung === null ? null : (d.pdfNamen || []).map(n => ({ n, codes: [...strich(n).matchAll(PB_RE)].map(m => m[1]) })).flatMap(x => x.codes.map(c => ({ n: x.n, c, f: A.berichtsFassung(c) })))
+      .filter(x => x.f.grund === fa.grund && x.f.fassung !== null && x.f.fassung > fa.fassung).sort((a, b) => b.f.fassung - a.f.fassung)[0];
+    if (pdfNeuer) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code.slice(-3)} ist überholt`, notiz: `Im Projektordner liegt die Fassung ${pdfNeuer.c} (nur als PDF).`, beleg: [['Laborergebnisse', pdfNeuer.n]] });
     if (pdf) return neu(seg, von, bis, 'pruefbericht', { status: 'belegt', titel, beleg: [['Laborergebnisse', `PDF „${pdf}“ (Nummer nur im Dateinamen)`]], pdf });
     if (alle.length) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code} liegt nicht in „Laborergebnisse“`, notiz: `Im Ordner: ${[...new Set(alle.map(b => b.code))].join(', ')}.` });
     nichtPruefbar.push('kein Prüfbericht lesbar');
@@ -1501,29 +1505,31 @@ function analysieren(doc, d){
     return neu(seg, von, bis, 'anlage', { status: 'belegt', titel: `Anlage ${n}`, beleg });
   }
   function datumMarke(seg, von, bis, iso){
-    const vor = seg.text.slice(Math.max(0, von - 45), von), nach = seg.text.slice(bis, bis + 60), titel = `Datum ${deDatum(iso)}`;
+    // die Rolle des Datums gehört in den Schlüssel – zwei verschiedene Prüfungen desselben Datums bleiben getrennt bestätigbar (Codex, PR #1)
     let rolle = '';
+    const neu_ = (s, a, b, art, o) => neu(s, a, b, art, { param: rolle, ...o });
+    const vor = seg.text.slice(Math.max(0, von - 45), von), nach = seg.text.slice(bis, bis + 60), titel = `Datum ${deDatum(iso)}`;
     if (/Schaden vom:\s*$/.test(vor) || /Brandschaden vom\s*$/.test(vor) || /(?:^|\s)Am\s*$/.test(vor) && /^\s*kam es/.test(nach)) rolle = 'schadendatum';
     else if (/(?:^|\s)[Aa]m\s*$/.test(vor) && /^\s*wurde unser Büro/.test(nach)) rolle = 'auftragsdatum';
     else if (/(?:^|\s)am\s*$/.test(vor) && /^\s*sensorisch auf Brandgeruch/.test(nach)) rolle = 'brandgeruch';
     else if (/(?:fand|fanden)\s+(?:eine\s+)?Besichtigung/.test(seg.text.slice(von)) && /(?:^|\s)(?:[Aa]m|und am)\s*$/.test(vor)) rolle = 'ortstermin';
     else if (/(Sanierungsvorschlag|Untersuchungsbericht|Bericht|Mitteilung|Gutachten)\s+vom\s*$/.test(vor) || /^\s*\p{Lu}[\p{L} .\-]*,\s*$/u.test(seg.text.slice(0, von)) && !nach.trim())
-      return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum des Berichts.' });
+      return neu_(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum des Berichts.' });
     const pj = d.pj || {};
     if (rolle){
       const quellen = rolle === 'schadendatum' ? [['Projektdaten', 'Schadendatum', isoAus(pj.schadendatum)]] : rolle === 'auftragsdatum' ? [['Projektdaten', 'Auftragsdatum', isoAus(pj.auftragsdatum)]]
         : rolle === 'brandgeruch' ? [['LabelKit', 'Brandgeruch-Prüfung', isoAus(d.lk && d.lk.brandgeruchDatum)]]
         : [['Projektdaten', 'Ortstermin', isoAus(pj.ortstermin)], ...[...P.lkp.nr].map(([n, e]) => ['LabelKit', `Probenahme P${n}`, isoAus(e.p.datum)])];
       const da = quellen.filter(q => q[2]);
-      if (!da.length) return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: `Kein ${quellen[0][1]} in den Daten – nicht prüfbar.` });
+      if (!da.length) return neu_(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: `Kein ${quellen[0][1]} in den Daten – nicht prüfbar.` });
       const ok = da.filter(q => q[2] === iso);
-      if (ok.length) return neu(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: [[ok[0][0], `${ok[0][1]}: ${deDatum(iso)}${ok.length > 1 ? ` (und ${ok.length - 1} weitere)` : ''}`]] });
+      if (ok.length) return neu_(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: [[ok[0][0], `${ok[0][1]}: ${deDatum(iso)}${ok.length > 1 ? ` (und ${ok.length - 1} weitere)` : ''}`]] });
       const soll = [...new Set(da.map(q => q[2]))];
-      return neu(seg, von, bis, 'datum', { status: 'abweicht', titel, befund: `${quellen[0][1]}: im Text ${deDatum(iso)}, in den Daten ${soll.map(deDatum).join(' / ')}`, beleg: da.slice(0, 3).map(q => [q[0], `${q[1]}: ${deDatum(q[2])}`]) });
+      return neu_(seg, von, bis, 'datum', { status: 'abweicht', titel, befund: `${quellen[0][1]}: im Text ${deDatum(iso)}, in den Daten ${soll.map(deDatum).join(' / ')}`, beleg: da.slice(0, 3).map(q => [q[0], `${q[1]}: ${deDatum(q[2])}`]) });
     }
     const passt = P.eigeneDaten.filter(x => x.iso === iso);
-    if (passt.length) return neu(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: passt.slice(0, 4).map(x => ['Daten', x.was]) });
-    return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum steht in keiner Projektdatei.' });
+    if (passt.length) return neu_(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: passt.slice(0, 4).map(x => ['Daten', x.was]) });
+    return neu_(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum steht in keiner Projektdatei.' });
   }
   function schadenMarken(seg){
     const text = seg.text, pj = d.pj || {}, eigen = schadenTeile(pj.schadennummer);
