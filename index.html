@@ -1030,7 +1030,7 @@ const istUeberschrift = (text, p) => {
   return /^\d{1,2}(?:\.\d{1,2})*\.?\s+\p{Lu}/u.test(t) && t.length <= 90 && !/[.:;]$/.test(t) && !/\d\s*(?:µg|mg|ng|%)/.test(t);
 };
 /** XML eines Teils → Blöcke [{ typ:'p', seg, ueb } | { typ:'tab', zeilen:[[seg]] }]; segs bekommen fortlaufende Nummern. */
-function teilBloecke(xml, teil, segs){
+function teilBloecke(xml, teil, segs, wurzelWahl){
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length) throw Error('Word-Datei beschädigt (' + teil + ')');
   const kinder = (n, name) => [...n.childNodes].filter(c => c.nodeType === 1 && c.localName === name);
@@ -1043,10 +1043,10 @@ function teilBloecke(xml, teil, segs){
     else if (c.localName === 'sdt'){ const inh = kinder(c, 'sdtContent')[0]; if (inh) lauf(inh); }
     else if (c.localName === 'body') lauf(c); } };
   const wurzel = doc.documentElement;
-  lauf(teil === 'document' ? (kinder(wurzel, 'body')[0] || wurzel) : wurzel);
+  if (wurzelWahl) for (const w of wurzelWahl(wurzel)) lauf(w);
+  else lauf(teil === 'document' ? (kinder(wurzel, 'body')[0] || wurzel) : wurzel);
   return out;
 }
-/** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“), Fußzeilen ans Ende („Fußzeile“). */
 /** Einen einzelnen ZIP-Eintrag lesen (für word/_rels/document.xml.rels, das word-luecken.js nicht liefert); null, wenn er fehlt. */
 async function zipEintrag(bytes, gesucht){
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), u16 = i => b[i] | (b[i + 1] << 8), u32 = i => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
@@ -1071,7 +1071,14 @@ async function benutzteKopfzeilen(bytes, documentXml, alle, verweis = 'headerRef
   // nach lokalem Namen, nicht nach Präfix oder Namensraum-URI – gilt für Transitional und Strict OOXML (Codex, PR #1)
   const doc = new DOMParser().parseFromString(documentXml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length) return alle;
-  const refs = [...doc.getElementsByTagNameNS('*', verweis)];
+  // nur sichtbare Varianten: „first“ nur mit titlePg im selben Abschnitt, „even“ nur mit evenAndOddHeaders in settings.xml (Codex, PR #1)
+  const an = e => !!e && !/^(0|false|off)$/i.test(([...e.attributes].find(a => a.localName === 'val') || {}).value || '');
+  let gerade = false; try{ const s = await zipEintrag(bytes, 'word/settings.xml'); if (s){ const sd = new DOMParser().parseFromString(s, 'application/xml'); gerade = an(sd.getElementsByTagNameNS('*', 'evenAndOddHeaders')[0]); } }catch(e){}
+  const refs = [...doc.getElementsByTagNameNS('*', verweis)].filter(e => {
+    const typ = ([...e.attributes].find(a => a.localName === 'type') || {}).value || 'default';
+    if (typ === 'first') return an([...e.parentNode.childNodes].find(c => c.nodeType === 1 && c.localName === 'titlePg'));
+    if (typ === 'even') return gerade;
+    return true; });
   const ids = refs.map(e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value).filter(Boolean);
   if (refs.length && ids.length !== refs.length) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
   let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
@@ -1082,6 +1089,8 @@ async function benutzteKopfzeilen(bytes, documentXml, alle, verweis = 'headerRef
   const benutzt = new Set(ids.map(id => ziel.get(id)).filter(Boolean).map(t => 'word/' + t.replace(/^\/?(?:word\/)?/, '')));
   return alle.filter(n => benutzt.has(n));
 }
+/** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“); Fußnoten, Endnoten und
+    Fußzeilen ans Ende („Fußnote“, „Endnote“, „Fußzeile“). */
 async function docxLesen(bytes){
   const teile = await root.WordLuecken.textteile(bytes), segs = [], bloecke = [], fuss = [];
   const teil = re => Object.keys(teile).filter(n => re.test(n)), sortiert = l => l.sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
@@ -1096,6 +1105,14 @@ async function docxLesen(bytes){
   randLesen(kopf, 'Kopfzeile', bloecke);
   randLesen(fusz, 'Fußzeile', fuss);
   bloecke.push(...teilBloecke(teile['word/document.xml'], 'document', segs));
+  // Fuß- und Endnoten, auf die der Haupttext verweist – ohne Trennlinien-Einträge (w:type) und ohne verwaiste Noten (Codex, PR #1)
+  const dokXml = new DOMParser().parseFromString(teile['word/document.xml'], 'application/xml');
+  for (const [datei, el, ref, art] of [['word/footnotes.xml', 'footnote', 'footnoteReference', 'Fußnote'], ['word/endnotes.xml', 'endnote', 'endnoteReference', 'Endnote']]){
+    if (!teile[datei]) continue;
+    const idVon = e => ([...e.attributes].find(a => a.localName === 'id') || {}).value;
+    const ids = new Set([...dokXml.getElementsByTagNameNS('*', ref)].map(idVon).filter(Boolean)); if (!ids.size) continue;
+    for (const b of teilBloecke(teile[datei], 'kopf', segs, w => [...w.childNodes].filter(c => c.nodeType === 1 && c.localName === el && ids.has(idVon(c)) && ![...c.attributes].some(a => a.localName === 'type'))))
+      { b.kopf = art; bloecke.push(b); } }
   bloecke.push(...fuss);   // Fußzeilen am Ende
   let abschnitt = '', titel = '';
   for (const b of bloecke){ if (b.kopf){ b.abschnitt = b.kopf; continue; }
@@ -1858,7 +1875,7 @@ function belegZeigen(id, scroll){
    ${m.befund ? `<div class="titel" style="font-weight:600">${esc(m.befund)}</div>` : ''}
    ${(m.beleg || []).length ? `<dl>${m.beleg.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>` : ''}
    ${m.notiz ? `<div class="klein">${esc(m.notiz)}</div>` : ''}
-   <div class="klein">Stelle im Bericht: ${esc(m.abschnitt === 'Kopfzeile' || m.abschnitt === 'Fußzeile' ? m.abschnitt : m.abschnitt ? 'Abschnitt ' + m.abschnitt : ort0())} – Seitenzahlen kennt nur Word.</div>
+   <div class="klein">Stelle im Bericht: ${esc(/^(Kopfzeile|Fußzeile|Fußnote|Endnote)$/.test(m.abschnitt || '') ? m.abschnitt : m.abschnitt ? 'Abschnitt ' + m.abschnitt : ort0())} – Seitenzahlen kennt nur Word.</div>
    <div class="knoepfe">${m.pdf ? `<button data-pdf="${esc(m.pdf)}">Prüfbericht öffnen</button>` : ''}${(m.status === 'abweicht' || m.status === 'fremd') ? (m.gewollt ? `<button data-zurueck="${m.id}">Zurücknehmen</button>` : `<button data-gewollt="${m.id}">Ist so gewollt</button>`) : ''}<button data-schliessen="1">Schließen</button></div>`;
   k.classList.remove('versteckt'); void st;
 }

@@ -387,6 +387,20 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       const r = LektorKern.analysieren(doc, { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, messungen: [], berichte: [], andere: LektorKern.andereIndex([{ name: '99.9001 Lindenweg Anderort Tst', nr: '99.9001', pj: null }, { name: '99.8000 Altbau Tst', nr: '99.8000', pj: null }], '99.9002') });
       return r.marken.filter(m => m.art === 'projektnr').map(m => m.text + ':' + m.status + ':' + m.abschnitt); }, zipSchreiben(z5).toString('base64'));
     assert.deepEqual(fz, ['99.9001:fremd:Fußzeile']);
+    // „first“-Kopfzeile ohne titlePg und „even“ ohne evenAndOddHeaders: nicht sichtbar, nicht gelesen; mit titlePg schon
+    const z6 = zipLesen(zipSchreiben(z2));
+    z6['word/document.xml'] = Buffer.from(z6['word/document.xml'].toString().replace('</w:sectPr>', '<w:headerReference w:type="first" r:id="rId9"/><w:headerReference w:type="even" r:id="rId10"/></w:sectPr>'));
+    z6['word/_rels/document.xml.rels'] = Buffer.from(z6['word/_rels/document.xml.rels'].toString().replace('</Relationships>', '<Relationship Id="rId9" Type="x" Target="header3.xml"/><Relationship Id="rId10" Type="x" Target="header4.xml"/></Relationships>'));
+    z6['word/header3.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'ER-2025-33333')); z6['word/header4.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'GE-2025-44444'));
+    const lies = z => page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z).toString('base64'));
+    const k6 = await lies(z6); assert.match(k6, /AB-2025-11111/); assert.doesNotMatch(k6, /ER-2025-33333|GE-2025-44444/);
+    z6['word/document.xml'] = Buffer.from(z6['word/document.xml'].toString().replace('</w:sectPr>', '<w:titlePg/></w:sectPr>'));
+    assert.match(await lies(z6), /ER-2025-33333/);
+    // Fußnote mit Verweis wird gelesen, Trennlinie und verwaiste Note nicht
+    const z7 = zipLesen(docxVonHand(['Text']));
+    z7['word/document.xml'] = Buffer.from(z7['word/document.xml'].toString().replace('<w:t xml:space="preserve">Text</w:t></w:r>', '<w:t xml:space="preserve">Text</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r>'));
+    z7['word/footnotes.xml'] = Buffer.from('<?xml version="1.0"?><w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:t>TR-2025-00000</w:t></w:r></w:p></w:footnote><w:footnote w:id="1"><w:p><w:r><w:t>Siehe Projekt 99.9001</w:t></w:r></w:p></w:footnote><w:footnote w:id="2"><w:p><w:r><w:t>verwaist VW-2025-55555</w:t></w:r></w:p></w:footnote></w:footnotes>');
+    const k7 = await lies(z7); assert.match(k7, /Siehe Projekt 99\.9001/); assert.doesNotMatch(k7, /TR-2025|VW-2025/);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);

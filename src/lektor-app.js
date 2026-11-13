@@ -319,7 +319,7 @@ function belegZeigen(id, scroll){
    ${m.befund ? `<div class="titel" style="font-weight:600">${esc(m.befund)}</div>` : ''}
    ${(m.beleg || []).length ? `<dl>${m.beleg.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>` : ''}
    ${m.notiz ? `<div class="klein">${esc(m.notiz)}</div>` : ''}
-   <div class="klein">Stelle im Bericht: ${esc(m.abschnitt === 'Kopfzeile' || m.abschnitt === 'Fußzeile' ? m.abschnitt : m.abschnitt ? 'Abschnitt ' + m.abschnitt : ort0())} – Seitenzahlen kennt nur Word.</div>
+   <div class="klein">Stelle im Bericht: ${esc(/^(Kopfzeile|Fußzeile|Fußnote|Endnote)$/.test(m.abschnitt || '') ? m.abschnitt : m.abschnitt ? 'Abschnitt ' + m.abschnitt : ort0())} – Seitenzahlen kennt nur Word.</div>
    <div class="knoepfe">${m.pdf ? `<button data-pdf="${esc(m.pdf)}">Prüfbericht öffnen</button>` : ''}${(m.status === 'abweicht' || m.status === 'fremd') ? (m.gewollt ? `<button data-zurueck="${m.id}">Zurücknehmen</button>` : `<button data-gewollt="${m.id}">Ist so gewollt</button>`) : ''}<button data-schliessen="1">Schließen</button></div>`;
   k.classList.remove('versteckt'); void st;
 }
