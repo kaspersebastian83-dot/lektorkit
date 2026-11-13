@@ -365,6 +365,27 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     z2['word/header1.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'AB-2025-11111')); z2['word/header2.xml'] = Buffer.from(kopf.replace('XY-2025-12345', 'ZZ-2025-99999'));
     const kt = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z2).toString('base64'));
     assert.match(kt, /AB-2025-11111/); assert.doesNotMatch(kt, /ZZ-2025-99999/);
+    // Präfixe frei gewählt (x:/rel: statt w:/r:): Kopfzeile trotzdem gefunden
+    const z3 = zipLesen(zipSchreiben(z2));
+    z3['word/document.xml'] = Buffer.from(z3['word/document.xml'].toString().replace(/w:/g, 'x:').replace(/xmlns:w=/g, 'xmlns:x=').replace(/r:id=/g, 'rel:id=').replace(/xmlns:r=/g, 'xmlns:rel='));
+    const kt3 = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z3).toString('base64'));
+    assert.match(kt3, /AB-2025-11111/); assert.doesNotMatch(kt3, /ZZ-2025-99999/);
+    // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
+    const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
+    await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
+    await page.evaluate(() => localStorage.setItem('lektorkit-kuerzel', 'Tst'));
+    await pruefen(BR1.ordner);
+    await page.evaluate(() => { const b = [...document.querySelectorAll('#befunde [data-gewollt]')]; b[0].click(); b[1].click(); });
+    await page.waitForFunction(() => LektorKitTest.zustand().erg.zaehler.gewollt === 2, null, { timeout: 5000 });
+    const g2 = await page.evaluate(async () => { const r = await navigator.storage.getDirectory(); const d = await (await (await (await (await r.getDirectoryHandle('Archiv')).getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst')).getDirectoryHandle('_Spektron')).getDirectoryHandle('LektorKit')).getFileHandle('_LektorKit.json'); return JSON.parse(await (await d.getFile()).text()).gewollt.length; });
+    assert.equal(g2, 2, 'beide Bestätigungen in der Datei');
+    // doppelt vergebene Probennummer in LabelKit: nicht prüfbar, nie „belegt“
+    const lk2 = JSON.parse(JSON.stringify(BR1.lk)); lk2.proben.push({ ...lk2.proben[0], z2: 'Kopie' });
+    const d2 = br1Dateien(); d2['_Spektron/LabelKit/99.9002_Daten.json'] = lk2;
+    await archivAnlegen({ [BR1.ordner]: d2, '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);
+    const r4 = await pruefen(BR1.ordner), p4 = r4.marken.filter(m => m.art === 'probe' && m.probe === 'P4');
+    assert.ok(p4.length && p4.every(m => m.status === 'ohne' && /doppelt/.test(m.np)), JSON.stringify(p4));
+    assert.ok(r4.zeilen.some(z => /warn/.test(z.k) && /Probennummer in LabelKit doppelt vergeben/.test(z.t)));
     // Bericht lesen und währenddessen ein anderes Projekt öffnen: der alte Bericht kommt nicht ins neue Projekt
     const v = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
       await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv);

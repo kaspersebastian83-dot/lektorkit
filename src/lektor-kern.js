@@ -72,10 +72,16 @@ async function zipEintrag(bytes, gesucht){
 }
 /** Kopfzeilen, die ein Abschnitt des Dokuments wirklich benutzt (headerReference → Beziehung → Datei). Ohne lesbare Beziehungen: alle. */
 async function benutzteKopfzeilen(bytes, documentXml, alle){
-  const ids = [...documentXml.matchAll(/<w:headerReference\b[^>]*\br:id="([^"]+)"/g)].map(m => m[1]);
+  // nach Namensraum und lokalem Namen, nicht nach Präfix (Codex, PR #1)
+  const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships', W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const doc = new DOMParser().parseFromString(documentXml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return alle;
+  const ids = [...doc.getElementsByTagNameNS(W_NS, 'headerReference')].map(e => e.getAttributeNS(R_NS, 'id')).filter(Boolean);
   let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
   if (!rels) return alle;
-  const ziel = new Map([...rels.matchAll(/<Relationship\b[^>]*>/g)].map(m => [(/\bId="([^"]+)"/.exec(m[0]) || [])[1], (/\bTarget="([^"]+)"/.exec(m[0]) || [])[1]]));
+  const rd = new DOMParser().parseFromString(rels, 'application/xml');
+  if (rd.getElementsByTagName('parsererror').length) return alle;
+  const ziel = new Map([...rd.getElementsByTagNameNS('*', 'Relationship')].map(e => [e.getAttribute('Id'), e.getAttribute('Target') || '']));
   const benutzt = new Set(ids.map(id => ziel.get(id)).filter(Boolean).map(t => 'word/' + t.replace(/^\/?(?:word\/)?/, '')));
   return alle.filter(n => benutzt.has(n));
 }
@@ -262,6 +268,8 @@ function analysieren(doc, d){
   const probeMarke = (seg, von, bis, n, bg) => {
     if (!frei(seg, von, bis)) return;
     const i = probeInfo(n, bg), probe = (bg ? 'B' : 'P') + n;
+    // doppelt vergebene Nummer: nicht prüfbar – steht in der gelben Zeile oben, nie als „belegt“ (Codex, PR #1)
+    if (i.doppelt){ const g = 'Probennummer in LabelKit doppelt vergeben'; nichtPruefbar.push(g); return neu(seg, von, bis, 'probe', { probe, status: 'ohne', nichtPruefbar: g, titel: `Probe ${n}`, notiz: `Nicht prüfbar: P${n} ist in LabelKit doppelt vergeben – in LabelKit klären.` }); }
     if (i.da) return neu(seg, von, bis, 'probe', { probe, status: 'belegt', titel: bg ? `Brandgeruch-Probe ${n}` : `Probe ${n}`, beleg: [[bg ? 'LabelKit' : (i.ausBericht ? 'Prüfbericht' : 'LabelKit'), i.zeile]] });
     if (!P.lkp.da) return neu(seg, von, bis, 'probe', { probe, status: 'ohne', titel: `Probe ${n}`, notiz: 'Keine LabelKit-Datei dieses Projekts – Probe nicht prüfbar.' });
     if (i.storniert) return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: `Probe ${n}`, befund: `P${n} ist in LabelKit storniert`, notiz: 'Im Text steht sie trotzdem.' });

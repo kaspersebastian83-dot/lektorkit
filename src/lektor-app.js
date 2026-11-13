@@ -139,16 +139,20 @@ async function kuerzelHolen(){
   return new Promise(ok => { dlg.onclose = () => { const k = dlg.returnValue === 'ok' ? tidy(personen.length ? sel.value : txt.value) : '';
     if (k) try{ localStorage.setItem('lektorkit-kuerzel', k); }catch(e){} ok(k); }; dlg.showModal(); });
 }
+/* Schreibvorgänge nacheinander: zwei schnelle Klicks lesen sonst denselben alten Stand und der zweite überschreibt den ersten (Codex, PR #1). */
+let schreibKette = Promise.resolve();
+const nacheinander = fn => (schreibKette = schreibKette.then(fn, fn));
 async function alsGewollt(id){
   const m = S.erg.marken[id]; if (!m) return;
   const kuerzel = await kuerzelHolen(); if (!kuerzel) return;
-  try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== m.schluessel).concat([{ schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: new Date().toISOString().slice(0, 10) }]));
-    neuAuswerten(); }
-  catch(e){ meldung('Nicht vermerkt: ' + e.message); }
+  const eintrag = { schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: new Date().toISOString().slice(0, 10) };
+  return nacheinander(async () => { try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== eintrag.schluessel).concat([eintrag])); neuAuswerten(); }
+    catch(e){ meldung('Nicht vermerkt: ' + e.message); } });
 }
 async function zuruecknehmen(id){
   const m = S.erg.marken[id]; if (!m) return;
-  try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== m.schluessel)); neuAuswerten(); }catch(e){ meldung('Nicht geändert: ' + e.message); }
+  const k = m.schluessel;
+  return nacheinander(async () => { try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== k)); neuAuswerten(); }catch(e){ meldung('Nicht geändert: ' + e.message); } });
 }
 
 /* ---------- Ablauf ---------- */
