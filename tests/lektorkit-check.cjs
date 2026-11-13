@@ -419,6 +419,13 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
       const sofort = document.getElementById('haupt').classList.contains('versteckt'); await p; await LektorKitTest.warteAndere();
       return [sofort, document.getElementById('haupt').classList.contains('versteckt'), LektorKitTest.zustand().erg]; });
     assert.deepEqual(weg, [true, true, null]);
+    // während ein Projekt lädt: Ablage versteckt, ein Bericht wird nicht gelesen
+    const lade = await page.evaluate(async b => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      const p = LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv);
+      const versteckt = document.getElementById('berichtWahl').classList.contains('versteckt');
+      await LektorKitTest.lesen(new File([Uint8Array.from(atob(b), c => c.charCodeAt(0))], 'hand.docx')); const doc = !!LektorKitTest.zustand().doc;
+      await p; await LektorKitTest.warteAndere(); return [versteckt, doc, LektorKitTest.zustand().daten.projekt.name]; }, docxVonHand(['P1 12,3 µg/cm²']).toString('base64'));
+    assert.deepEqual(lade, [true, false, '99.9002 Brandweg Beispielstadt Tst']);
     const mv = await page.evaluate(() => { const x = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:moveFrom><w:r><w:t>alt 99 µg/cm² </w:t></w:r></w:moveFrom><w:moveTo><w:r><w:t>neu 12,3 µg/cm²</w:t></w:r></w:moveTo></w:p>';
       return LektorKern.absatzText(new DOMParser().parseFromString(x, 'application/xml').documentElement); });
     assert.equal(mv, 'neu 12,3 µg/cm²');

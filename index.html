@@ -1705,14 +1705,17 @@ async function oeffnen(dir, archiv, wunsch){
   // Jeder Aufruf bekommt eine Nummer; ein älterer, langsamerer Lauf schreibt nichts mehr in den Zustand (Codex, PR #1)
   const lauf = ++S.oeffnenLauf, veraltet = () => lauf !== S.oeffnenLauf;
   // der Bericht des vorigen Projekts verschwindet sofort – nichts davon darf unter dem neuen Projekt stehen bleiben (Codex, PR #1)
-  S.andereLauf++; S.lesenLauf++; S.doc = null; S.erg = null; S.bericht = null; S.gewaehlt = null;
+  S.andereLauf++; S.lesenLauf++; S.doc = null; S.erg = null; S.bericht = null; S.gewaehlt = null; S.laedt = true;   // solange: kein Bericht lesbar (Codex, PR #1)
   $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); $('berichtWahl').classList.add('versteckt');
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
-  const daten = await projektLesen(dir); if (veraltet()) return null;
+  let daten;
+  try{ daten = await projektLesen(dir); }
+  catch(e){ if (!veraltet()){ S.laedt = false; meldung(`„${dir.name}“ lässt sich nicht lesen: ${e.message}`); } return null; }
+  if (veraltet()) return null;
   let gewollt = [], gewolltFehler = '';
   try{ gewollt = (await gewolltLesen(dir)).liste; }catch(e){ gewolltFehler = e.message; }
   if (veraltet()) return null;
-  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.daten = daten; S.gewollt = gewollt; S.gewolltFehler = gewolltFehler;
+  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.daten = daten; S.gewollt = gewollt; S.gewolltFehler = gewolltFehler; S.laedt = false;
   const pj = S.daten.pj || {};
   $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>${esc([pj.schadennummer ? 'Schaden-Nr. ' + tidy(pj.schadennummer).replace(/\n/g, ', ') : '', pj.zustaendig && pj.zustaendig.kuerzel ? 'Zuständig: ' + pj.zustaendig.kuerzel : ''].filter(Boolean).join(' · '))}</span>`;
   const sel = $('selBericht');
@@ -1742,6 +1745,7 @@ async function andereVorbereiten(){
 }
 async function lesen(datei){
   // eigene Laufnummer: ein langsamerer, älterer Lesevorgang (oder einer aus einem inzwischen gewechselten Projekt) wird verworfen (Codex, PR #1)
+  if (S.laedt || !S.daten) return;   // während ein Projekt geladen wird, gehört ein Bericht zu keinem Projekt
   const lauf = ++S.lesenLauf, projekt = S.oeffnenLauf, veraltet = () => lauf !== S.lesenLauf || projekt !== S.oeffnenLauf;
   let bytes, name, quelle, doc;
   try{
