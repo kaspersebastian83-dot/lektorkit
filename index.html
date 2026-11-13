@@ -1039,10 +1039,13 @@ function teilBloecke(xml, teil, segs, wurzelWahl){
   const kinder = (n, name) => [...n.childNodes].filter(c => c.nodeType === 1 && c.localName === name);
   const neu = (text, art) => { const s = { id: segs.length, text, art, teil }; segs.push(s); return s; };
   const out = [];
+  // Zelltext: alle Absätze der Zelle, auch in verschachtelten Tabellen (Codex, PR #1) – ohne gelöschte Zeilen darin
+  const geloeschteZeile = e => { for (let x = e.parentNode; x && x !== doc; x = x.parentNode) if (x.localName === 'tr' && kinder(x, 'trPr').some(pr => kinder(pr, 'del').length)) return true; return false; };
+  const zellText = tc => [...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && !geloeschteZeile(e)).map(absatzText).join('\n');
   const lauf = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue;
     if (c.localName === 'p'){ const text = absatzText(c); out.push({ typ: 'p', seg: neu(text, 'p'), ueb: teil === 'document' && istUeberschrift(text, c) }); }
     // Tabellenzeilen, die mit Änderungen nachverfolgen gelöscht sind (trPr/del), zeigt Word nicht – sie zählen nicht (Codex, PR #1)
-    else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').filter(tr => !kinder(tr, 'trPr').some(pr => kinder(pr, 'del').length)).map(tr => kinder(tr, 'tc').map(tc => neu([...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && e.parentNode === tc || e.localName === 'p' && e.parentNode.localName === 'sdtContent').map(absatzText).join('\n'), 'zelle')));
+    else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').filter(tr => !kinder(tr, 'trPr').some(pr => kinder(pr, 'del').length)).map(tr => kinder(tr, 'tc').map(tc => neu(zellText(tc), 'zelle')));
       out.push({ typ: 'tab', zeilen }); }
     else if (c.localName === 'sdt'){ const inh = kinder(c, 'sdtContent')[0]; if (inh) lauf(inh); }
     else if (c.localName === 'body') lauf(c); } };
@@ -1358,17 +1361,18 @@ function analysieren(doc, d){
     const kopf = b.zeilen[0].map(s => tidy(s.text)), sp = re => kopf.findIndex(k => re.test(k));
     const iP = sp(/^Probe\b/i); if (iP < 0) continue;
     const iL = sp(/^Labor-?\s?Nr/i), iS = sp(/^(Entnahmestelle|Probenahmestelle|Stelle|Raum)/i);
-    const iW = kopf.findIndex(k => /\[(.+)\]/.test(k) && /chlorid|PAK|EPA|summe/i.test(k));
-    const uW = iW >= 0 ? /\[(.+)\]/.exec(kopf[iW])[1] : '', pW = iW >= 0 ? (/chlorid/i.test(kopf[iW]) ? 'Chlorid' : 'PAK') : '';
+    // jede Wertspalte („Chlorid [µg/cm²]“, „Σ 16 EPA-PAK [µg/m²]“) – nicht nur die erste (Codex, PR #1)
+    const wSp = kopf.map((k, i) => /\[(.+)\]/.test(k) && /chlorid|PAK|EPA|summe/i.test(k) ? { i, u: /\[(.+)\]/.exec(k)[1], p: /chlorid/i.test(k) ? 'Chlorid' : 'PAK' } : null).filter(Boolean);
     for (const z of b.zeilen.slice(1)){
       const nm = /^\s*(\d{1,4})\b/.exec(z[iP] ? z[iP].text : ''); if (!nm) continue; const n = Number(nm[1]);
-      for (const s of z) tabSegs.add(s.id);
+      // nur die Zellen, die hier ausgewertet werden, sind „erledigt“ – die übrigen prüft der allgemeine Durchlauf (Codex, PR #1)
+      for (const i of [iP, iS, iL, ...wSp.map(w => w.i)]) if (i >= 0 && z[i]) tabSegs.add(z[i].id);
       probeMarke(z[iP], nm.index + nm[0].length - nm[1].length, nm.index + nm[0].length, n, false);
       if (iS >= 0 && z[iS]){ const t = z[iS].text, a = t.length - t.trimStart().length; raumMarke(z[iS], a, t.trimEnd().length, n, false); }
       if (iL >= 0 && z[iL] && tidy(z[iL].text)){ const t = z[iL].text, a = t.length - t.trimStart().length, ms = P.jeProbe.get('P' + n) || [], lab = ms.find(x => x.probe)?.probe;
         if (lab) neu(z[iL], a, t.trimEnd().length, 'labnr', { probe: 'P' + n, status: A.norm(lab) === A.norm(t) ? 'belegt' : 'abweicht', titel: `Labor-Nr. P${n}`, beleg: [['Prüfbericht', `${ms[0].bericht}, Probe ${n}: Labor-Nr. ${lab}`]], befund: A.norm(lab) === A.norm(t) ? '' : `Labor-Nr. von P${n}: im Text ${tidy(t)}, im Prüfbericht ${lab}` }); }
-      if (iW >= 0 && z[iW]){ const t = z[iW].text, roh = tidy(t);
-        if (roh && /\d|n\.\s*n\.|unter\s+BG/i.test(roh) && !/^[–-]$/.test(roh)){ const a = t.indexOf(roh); wertMarke(z[iW], a, a + roh.length, roh, uW, n, pW); } }
+      for (const w of wSp) if (z[w.i]){ const t = z[w.i].text, roh = tidy(t);
+        if (roh && /\d|n\.\s*n\.|unter\s+BG/i.test(roh) && !/^[–-]$/.test(roh)){ const a = t.indexOf(roh); wertMarke(z[w.i], a, a + roh.length, roh, w.u, n, w.p); } }
     } }
 
   /* --- Absätze und übrige Zellen --- */

@@ -421,6 +421,16 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const z12 = zipLesen(docxVonHand(['x']));
     z12['word/document.xml'] = Buffer.from(z12['word/document.xml'].toString().replace('<w:body>', '<w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>sichtbar</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:trPr><w:del w:id="9" w:author="x"/></w:trPr><w:tc><w:p><w:r><w:t>DZ-2025-77777</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'));
     const k12 = await lies(z12); assert.match(k12, /sichtbar/); assert.doesNotMatch(k12, /DZ-2025/);
+    // verschachtelte Tabelle in einer Zelle wird gelesen
+    z12['word/document.xml'] = Buffer.from(z12['word/document.xml'].toString().replace('<w:t>sichtbar</w:t></w:r></w:p>', '<w:t>sichtbar</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>innen NE-2025-88888</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'));
+    assert.match(await lies(z12), /innen NE-2025-88888/);
+    // zwei Wertspalten in einer Tabelle: beide geprüft; eine weitere Spalte prüft der allgemeine Durchlauf
+    const k14 = await page.evaluate(() => { const s = (id, text) => ({ id, text, art: 'zelle', teil: 'document', abschnitt: '5', titel: 'Befund' });
+      const segs = [s(0, 'Probe'), s(1, 'Chlorid [µg/cm²]'), s(2, 'Σ 16 EPA-PAK [µg/m²]'), s(3, 'Bemerkung'), s(4, '1'), s(5, '12,3'), s(6, '999'), s(7, 'Projekt 99.9001')];
+      const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12,3', q: 'gemessen', v: 12.3, bericht: 'AR-1' }, { label: 'P1', p: 'Summe 16 EPA-PAK', u: 'µg/m²', roh: '230', q: 'gemessen', v: 230, bericht: 'AR-1' }],
+        andere: LektorKern.andereIndex([{ name: '99.9001 Anderort Tst', nr: '99.9001', pj: null }], '99.9002') };
+      return LektorKern.analysieren({ bloecke: [{ typ: 'tab', zeilen: [segs.slice(0, 4), segs.slice(4)] }], segs }, d).marken.filter(m => m.art !== 'probe').map(m => m.art + ':' + m.text + ':' + m.status); });
+    assert.deepEqual(k14, ['wert:12,3:belegt', 'wert:999:abweicht', 'projektnr:99.9001:fremd']);
     // „in Probe 1, in Probe 2 ebenfalls“ → ohne Beleg; Auftraggeber eines anderen Projekts ohne Adresse erkannt
     const k13 = await page.evaluate(() => { const seg = t => ({ bloecke: [], segs: [{ id: 0, text: t, art: 'p', teil: 'document', abschnitt: '5.2', titel: 'Korrosionsschäden' }] });
       const d = { projekt: { name: '99.9002 X Tst', nr: '99.9002' }, berichte: [], messungen: [{ label: 'P1', p: 'Chlorid', u: 'µg/cm²', roh: '12', q: 'gemessen', v: 12, bericht: 'AR-1' }, { label: 'P2', p: 'Chlorid', u: 'µg/cm²', roh: '3', q: 'gemessen', v: 3, bericht: 'AR-1' }],
