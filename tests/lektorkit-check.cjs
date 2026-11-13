@@ -13,6 +13,7 @@
 //  i  Bericht und alle Projektdateien nach einem Lauf byte-gleich; alte Projekte bekommen nie „_Spektron“
 //  j  nicht prüfbar (Prüfbericht nur als PDF, Übernahme nicht aktuell) → Zeile oben mit Zahl und Grund, kein sauberes Ergebnis
 //  k  Prüfprotokoll: eine Seite
+//  l  Codex-Befunde PR #1: fehlender Bericht im Link → nichts lesen; alte Übernahme mit gelöschter -02 macht -01 nicht „überholt“
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http'), zlib = require('node:zlib'), assert = require('node:assert/strict');
 const ROOT = path.join(__dirname, '..'), OUT = path.join(__dirname, 'out');
 const NACHBAR = (env, name) => path.resolve(process.env[env] || path.join(ROOT, '..', name));
@@ -321,6 +322,22 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     assert.notEqual(r.kopf, 'Keine Abweichung gefunden'); assert.match(r.kopf, /nicht prüfbar/);
     assert.equal(r.zaehler.belegt > 0, true);
     await schuss('j-nicht-pruefbar');
+  });
+
+  await fall('l', 'Codex PR #1: fehlender Bericht im Link, alte Übernahme mit gelöschter -02', async () => {
+    // alte Übernahme (Stand passt nicht) nennt -02 und führt -01 als ersetzt – im Ordner liegt aber nur noch -01
+    const b = BR1.erg.berichte[0], neu = b.bericht.replace(/-01$/, '-02'), d = br1Dateien();
+    d['_Spektron/ResultKit/_Ergebnisse.json'] = { ...d['_Spektron/ResultKit/_Ergebnisse.json'], stand: 'alter Stand',
+      berichte: [{ ...b, bericht: neu, sources: { xml: neu + '.xml', pdf: neu + '.pdf' } }, BR1.erg.berichte[1]], ersetzt: [{ bericht: b.bericht, durch: [neu] }] };
+    await archivAnlegen({ [BR1.ordner]: d, ...archivBasis() }, MA);
+    const r = await pruefen(BR1.ordner);
+    assert.ok(finde(r, 'pruefbericht', b.bericht).every(m => m.status === 'belegt'), '-01 liegt da und gilt:\n' + zeig(r));
+    // Link mit einem Bericht, den es nicht gibt: nichts lesen, Auswahl offen, Meldung
+    const s = await page.evaluate(async () => { const root = await navigator.storage.getDirectory(), archiv = await root.getDirectoryHandle('Archiv');
+      await LektorKitTest.oeffnen(await archiv.getDirectoryHandle('99.9002 Brandweg Beispielstadt Tst'), archiv, 'Mitteilungen/2._Mitteilung_99.9002_Entwurf.docx');
+      return { doc: !!LektorKitTest.zustand().doc, start: !document.getElementById('start').classList.contains('versteckt'), meldung: document.getElementById('meldung').textContent }; });
+    assert.equal(s.doc, false); assert.equal(s.start, true); assert.match(s.meldung, /2\._Mitteilung_99\.9002_Entwurf\.docx“ liegt nicht in „Mitteilungen“/);
+    await page.evaluate(() => LektorKitTest.warteAndere());
   });
 
   await fall('k', 'Prüfprotokoll auf einer Seite', async () => {

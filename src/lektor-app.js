@@ -8,7 +8,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const tidy = A.tidy;
 const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
-const S = { archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
+const S = { andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
 $('version').textContent = ' ' + K.VERSION;
 
 /* ---------- Ordner ---------- */
@@ -59,10 +59,13 @@ async function projektLesen(dir){
   const liste = new Map(), dazu = b => { const k = A.norm(b.code); if (!k) return; const alt = liste.get(k); liste.set(k, alt ? { ...b, ...alt, quelle: alt.quelle + '+' + b.quelle, datum: alt.datum || b.datum, pdf: alt.pdf || b.pdf } : b); };
   for (const r of berichte){ const code = tidy(r.bericht) || r.datei, f = fremd.get(A.norm(code)), basis = r.datei.replace(/\.xml$/i, '');
     dazu({ code, ...A.berichtsFassung(code), vorlaeufig: r.vorlaeufig, datei: r.datei, quelle: 'xml', fremd: f ? f.nr : '', ref: r.auftragsreferenz, pdf: (pdf.find(p => gleichName(p.name.replace(/\.pdf$/i, ''), basis)) || {}).name || '' }); }
-  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht) continue; const pn = SO.projektNr(String(b.auftragsreferenz || '').replace(/^\D*/, '')) || (String(b.auftragsreferenz || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+  // Aus _Ergebnisse.json nur Berichte, deren Datei noch in „Laborergebnisse“ liegt – oder alle, wenn die Übernahme aktuell ist
+  // (Codex, PR #1: eine alte Übernahme mit einer inzwischen gelöschten -02 macht -01 sonst fälschlich „überholt“)
+  const obenNamen = new Set(oben.map(x => x.name.normalize('NFC').toLowerCase())), liegtDa = n => !!n && obenNamen.has(String(n).normalize('NFC').toLowerCase());
+  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht || !(aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))) continue; const pn = SO.projektNr(String(b.auftragsreferenz || '').replace(/^\D*/, '')) || (String(b.auftragsreferenz || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
     dazu({ code: tidy(b.bericht), ...A.berichtsFassung(b.bericht), vorlaeufig: !!b.vorlaeufig, datei: (b.sources && (b.sources.xml || b.sources.pdf)) || '', quelle: 'resultkit', datum: b.datum || '', fremd: pn && nr && pn !== nr ? pn : '', ref: b.auftragsreferenz, pdf: (b.sources && b.sources.pdf) || '' }); }
   D.berichte = [...liste.values()];
-  D.ersetzt = [...eigen.ersetzt, ...(datei && Array.isArray(datei.ersetzt) ? datei.ersetzt.map(e => e && e.bericht).filter(Boolean) : [])];
+  D.ersetzt = [...eigen.ersetzt, ...(datei && aktuell && Array.isArray(datei.ersetzt) ? datei.ersetzt.map(e => e && e.bericht).filter(Boolean) : [])];
   D.pdfNamen = pdf.map(p => p.name);
   const vonErgebnis = new Set((datei && aktuell ? datei.berichte : []).map(b => b && b.sources && b.sources.pdf).filter(Boolean).map(n => n.normalize('NFC').toLowerCase()));
   D.pdfOhneXml = pdf.filter(p => p.tiefe === 0 && !xmlBasis.has(p.name.replace(/\.pdf$/i, '').normalize('NFC').toLowerCase()) && !vonErgebnis.has(p.name.normalize('NFC').toLowerCase())).map(p => p.name);
@@ -156,7 +159,7 @@ async function archivAusSpeicher(){ try{ const db = await suiteDb(); try{ return
 const recht = async (h, fragen) => { if (!h.queryPermission) return true; let p = await h.queryPermission({ mode: 'read' }); if (p === 'prompt' && fragen) p = await h.requestPermission({ mode: 'read' }); return p === 'granted'; };
 
 async function oeffnen(dir, archiv, wunsch){
-  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = '';
+  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = ''; S.andereLauf++;
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
   S.daten = await projektLesen(dir);
   try{ const g = await gewolltLesen(dir); S.gewollt = g.liste; S.gewolltFehler = ''; }catch(e){ S.gewollt = []; S.gewolltFehler = e.message; }
@@ -164,17 +167,26 @@ async function oeffnen(dir, archiv, wunsch){
   $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>${esc([pj.schadennummer ? 'Schaden-Nr. ' + tidy(pj.schadennummer).replace(/\n/g, ', ') : '', pj.zustaendig && pj.zustaendig.kuerzel ? 'Zuständig: ' + pj.zustaendig.kuerzel : ''].filter(Boolean).join(' · '))}</span>`;
   const sel = $('selBericht');
   sel.innerHTML = S.daten.mitteilungen.map((x, i) => `<option value="${i}">${esc(x.name)}</option>`).join('') || '<option value="">– keine Word-Datei in „Mitteilungen“ –</option>';
-  if (wunsch){ const i = S.daten.mitteilungen.findIndex(x => gleichName('Mitteilungen/' + x.name, wunsch) || gleichName(x.name, wunsch)); if (i >= 0) sel.value = String(i); }
+  let gefunden = false;
+  if (wunsch){ const i = S.daten.mitteilungen.findIndex(x => gleichName('Mitteilungen/' + x.name, wunsch) || gleichName(x.name, wunsch)); if (i >= 0){ sel.value = String(i); gefunden = true; } }
   $('berichtWahl').classList.remove('versteckt'); $('btnFreigeben').classList.add('versteckt');
   if (S.archiv) andereVorbereiten();
   else S.andereStatus = 'fehlt';
-  if (wunsch && S.daten.mitteilungen.length) await lesen();
+  // Nur den verlangten Bericht lesen – fehlt er, nie still einen anderen (Codex, PR #1)
+  if (gefunden) await lesen();
+  else if (wunsch){ S.doc = null; $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt');
+    meldung(`Der Bericht „${wunsch}“ liegt nicht in „Mitteilungen“ (umbenannt oder gelöscht?). Bitte unten den richtigen wählen.`); }
 }
 async function andereVorbereiten(){
+  // Lauf an dieses Projekt binden: öffnet jemand inzwischen ein anderes, wird das Ergebnis verworfen (Codex, PR #1)
+  const lauf = ++S.andereLauf, archiv = S.archiv, name = S.dir.name, nr = S.daten.projekt.nr, aktuell = () => lauf === S.andereLauf;
   S.andereStatus = 'laeuft';
-  try{ if (!(await recht(S.archiv, false))) { S.andereStatus = 'fehlt'; return; }
-    const liste = await andereLesen(S.archiv, S.dir.name); S.andere = K.andereIndex(liste, S.daten.projekt.nr); S.andereStatus = 'ok'; }
-  catch(e){ S.andereStatus = 'fehler'; S.andereFehler = e.message; }
+  let status, index = null, fehler = '';
+  try{ if (!(await recht(archiv, false))) status = 'fehlt';
+    else { const liste = await andereLesen(archiv, name); index = K.andereIndex(liste, nr); status = 'ok'; } }
+  catch(e){ status = 'fehler'; fehler = e.message; }
+  if (!aktuell()) return;
+  S.andere = index; S.andereStatus = status; S.andereFehler = fehler;
   if (S.doc) neuAuswerten();
 }
 async function lesen(datei){
