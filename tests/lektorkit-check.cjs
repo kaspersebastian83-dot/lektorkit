@@ -373,6 +373,11 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     z3['word/document.xml'] = Buffer.from(z3['word/document.xml'].toString().replace(/w:/g, 'x:').replace(/xmlns:w=/g, 'xmlns:x=').replace(/r:id=/g, 'rel:id=').replace(/xmlns:r=/g, 'xmlns:rel='));
     const kt3 = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z3).toString('base64'));
     assert.match(kt3, /AB-2025-11111/); assert.doesNotMatch(kt3, /ZZ-2025-99999/);
+    // Strict Open XML (andere Namensraum-URIs): Kopfzeile trotzdem gefunden
+    const z4 = zipLesen(zipSchreiben(z2));
+    z4['word/document.xml'] = Buffer.from(z4['word/document.xml'].toString().replace('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'http://purl.oclc.org/ooxml/wordprocessingml/main').replace('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'http://purl.oclc.org/ooxml/officeDocument/relationships'));
+    const kt4 = await page.evaluate(async b => (await LektorKern.docxLesen(Uint8Array.from(atob(b), c => c.charCodeAt(0)))).segs.filter(s => !s.leer).map(s => s.text).join(' | '), zipSchreiben(z4).toString('base64'));
+    assert.match(kt4, /AB-2025-11111/); assert.doesNotMatch(kt4, /ZZ-2025-99999/);
     // zwei „Ist so gewollt“ kurz nacheinander: beide bleiben in der Datei
     const docx2 = docxErsetzen(BR1_DOCX, [['<w:t xml:space="preserve">2300</w:t>', '<w:t xml:space="preserve">3200</w:t>'], ['mit 12,3 µg/cm² in Probe 1', 'mit 13,2 µg/cm² in Probe 1']]);
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx: docx2 }), '25.0100 Altweg 3 Altstadt Tst': { '_Projekt.json': { projektnummer: '25.0100', objekt: 'Altweg 3' } }, ...archivBasis() }, MA);

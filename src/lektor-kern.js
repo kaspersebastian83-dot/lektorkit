@@ -72,11 +72,12 @@ async function zipEintrag(bytes, gesucht){
 }
 /** Kopfzeilen, die ein Abschnitt des Dokuments wirklich benutzt (headerReference → Beziehung → Datei). Ohne lesbare Beziehungen: alle. */
 async function benutzteKopfzeilen(bytes, documentXml, alle){
-  // nach Namensraum und lokalem Namen, nicht nach Präfix (Codex, PR #1)
-  const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships', W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  // nach lokalem Namen, nicht nach Präfix oder Namensraum-URI – gilt für Transitional und Strict OOXML (Codex, PR #1)
   const doc = new DOMParser().parseFromString(documentXml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length) return alle;
-  const ids = [...doc.getElementsByTagNameNS(W_NS, 'headerReference')].map(e => e.getAttributeNS(R_NS, 'id')).filter(Boolean);
+  const refs = [...doc.getElementsByTagNameNS('*', 'headerReference')];
+  const ids = refs.map(e => ([...e.attributes].find(a => a.localName === 'id' && /relationships$/.test(a.namespaceURI || '')) || {}).value).filter(Boolean);
+  if (refs.length && ids.length !== refs.length) return alle;   // Verweise da, aber nicht lesbar: lieber alle Kopfzeilen als keine
   let rels = null; try{ rels = await zipEintrag(bytes, 'word/_rels/document.xml.rels'); }catch(e){ rels = null; }
   if (!rels) return alle;
   const rd = new DOMParser().parseFromString(rels, 'application/xml');
