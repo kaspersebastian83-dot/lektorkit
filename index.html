@@ -1,0 +1,1836 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LektorKit</title>
+<style>
+:root{--bg:#eef1f4;--weiss:#fff;--linie:#d5dbe2;--linie2:#b9c2cc;--text:#1c2330;--grau:#4a5361;--akzent:#1d5f8a;
+ --ok-bg:#e3f1f8;--ok:#0f4c6e;--ok-strich:#1d6f96;--ab-bg:#fdebd3;--ab:#7a3d00;--ab-strich:#b45309;--fr:#2b2233;--ob:#4a4f57}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg);font-size:15px}
+button{font:inherit;font-size:14px;min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--linie2);background:#fff;color:var(--text);cursor:pointer}
+button:hover{border-color:#8792a0}
+button.haupt{background:var(--akzent);border-color:var(--akzent);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,.m:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+select{font:inherit;font-size:14px;min-height:40px;border-radius:8px;border:1px solid var(--linie2);padding:0 8px;background:#fff;max-width:100%}
+header.kopf{background:#fff;border-bottom:1px solid var(--linie);padding:12px 28px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.marke{font-weight:700;font-size:17px;letter-spacing:.01em}.marke span{font-weight:500;color:var(--grau);font-size:13px;margin-left:6px}
+#projektKopf b{display:block;font-size:19px}#projektKopf span{font-size:13px;color:var(--grau)}
+main{max-width:1400px;margin:0 auto;padding:22px 28px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+#links{flex:1 1 580px;min-width:0;display:flex;flex-direction:column;gap:12px}
+#rechts{flex:1 1 380px;max-width:470px;min-width:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-bottom:8px}
+.dateizeile{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.dateizeile b{font-size:15px}.dateizeile span{font-size:13px;color:var(--grau)}
+#seite{background:#fff;border:1px solid var(--linie);box-shadow:0 2px 10px rgba(28,35,48,.08);padding:40px 52px;font-family:Arial,sans-serif;font-size:15px;line-height:1.85;color:#111}
+#seite p{margin:0 0 10px;text-align:left}
+#seite .ueb{font-weight:700;margin-top:18px}
+#seite .kopfz{font-size:12px;color:#555;border-bottom:1px dashed #ccc;margin-bottom:8px}
+#seite table{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:13.5px;line-height:1.5}
+#seite td{border:1px solid #9aa3ad;padding:3px 6px;vertical-align:top}
+#seite .abschnittsmarke{font-size:11px;color:#8a929c;font-family:Inter,Arial,sans-serif;margin-top:16px}
+.m{border-radius:3px;padding:0 3px;white-space:pre-wrap;font-weight:700;cursor:pointer}
+.m .ic{display:inline-block;vertical-align:-2px;margin-left:3px}
+.m.belegt{background:var(--ok-bg);color:var(--ok);border-bottom:2px solid var(--ok-strich)}
+.m.abweicht{background:var(--ab-bg);color:var(--ab);border-bottom:2px solid var(--ab-strich)}
+.m.fremd{background:var(--fr);color:#fff;border-bottom:2px solid var(--fr)}
+.m.ohne{background:#fff;color:var(--ob);border-bottom:2px dashed #6b7280;font-weight:600}
+.m.gewollt{background:#f1f2f4;color:#4a4f57;border-bottom:2px solid #9aa1aa;font-weight:600}
+.m.gewaehlt{outline:3px solid #f2b705;outline-offset:1px}
+.m.blink{animation:blink 1.2s ease 2}@keyframes blink{50%{outline:4px solid #f2b705}}
+.legende{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#333b47}
+.karte{background:#fff;border:1px solid var(--linie);border-radius:10px;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+.karte h2{margin:0;font-size:18px}
+.kacheln{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kachel{border-radius:8px;padding:10px 12px}.kachel b{display:block;font-size:24px}.kachel span{font-size:13px}
+.k-ok{background:var(--ok-bg);color:var(--ok)}.k-ab{background:var(--ab-bg);color:var(--ab)}.k-fr{background:var(--fr);color:#fff}.k-ob{background:#fff;border:1px dashed #6b7280;color:var(--ob)}
+.zeile{font-size:13.5px;padding:8px 10px;border-radius:8px;background:#f5f7f9;color:#2c3440}
+.zeile.warn{background:#fff4e0;border:1px solid #d08a1e;color:#5c3400;font-weight:600}
+.zeile.info{background:#f5f7f9}
+.befund .kat{font-size:12px;font-weight:700;letter-spacing:.04em}
+.befund.abweicht .kat{color:var(--ab)}.befund.fremd{border-color:var(--fr)}.befund.fremd .kat{color:var(--fr)}
+.befund.gewollt{opacity:.72}.befund.gewollt .kat{color:#555}
+.befund .titel{font-size:15px;font-weight:600}
+.befund .klein,.klein{font-size:13px;color:var(--grau)}
+.knoepfe{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.beleg{border-width:2px}.beleg.belegt{border-color:var(--ok-strich)}.beleg.abweicht{border-color:var(--ab-strich)}.beleg.fremd{border-color:var(--fr)}.beleg.ohne{border-style:dashed;border-color:#6b7280}
+.beleg dl{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;margin:0;font-size:14px}.beleg dt{color:var(--grau)}.beleg dd{margin:0}
+footer.fuss{background:#fff;border-top:1px solid var(--linie);padding:12px 28px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;position:sticky;bottom:0}
+#start{max-width:760px;margin:40px auto;padding:0 20px}
+#start .karte{padding:26px 28px;gap:14px}
+#ablage{border:2px dashed var(--linie2);border-radius:10px;padding:18px;text-align:center;color:var(--grau)}
+#ablage.drueber{border-color:var(--akzent);background:#eef6fb}
+#meldung{white-space:pre-wrap}
+.versteckt{display:none!important}
+dialog{border:1px solid var(--linie2);border-radius:12px;padding:22px;max-width:440px}
+dialog::backdrop{background:rgba(20,26,34,.35)}
+dialog label{display:flex;flex-direction:column;gap:6px;font-size:14px;margin:10px 0}
+dialog input{font:inherit;min-height:40px;border-radius:8px;border:1px solid var(--linie2);padding:0 10px}
+#protokoll{display:none}
+@media print{
+ @page{size:A4;margin:14mm 14mm 12mm}
+ body{background:#fff}
+ body>*:not(#protokoll){display:none!important}
+ #protokoll{display:block;font-family:Arial,sans-serif;font-size:9.5pt;color:#000;line-height:1.35}
+ #protokoll h1{font-size:14pt;margin:0 0 2mm}
+ #protokoll table{border-collapse:collapse;width:100%;margin:2mm 0}
+ #protokoll td,#protokoll th{border:0.3mm solid #777;padding:0.8mm 1.5mm;text-align:left;vertical-align:top;font-size:8.5pt}
+ #protokoll .p-warn{border:0.4mm solid #000;padding:1.5mm;font-weight:bold;margin:2mm 0}
+ #protokoll .p-unter{margin-top:6mm;display:flex;gap:20mm}
+}
+</style>
+</head>
+<body>
+<header class="kopf">
+ <div style="display:flex;gap:18px;align-items:center;min-width:0">
+  <div class="marke">LektorKit<span id="version"></span></div>
+  <div id="projektKopf"></div>
+ </div>
+ <div class="klein">liest den Bericht gegen die Projektdaten – ändert nichts</div>
+</header>
+
+<section id="start">
+ <div class="karte">
+  <h2>Bericht gegenlesen</h2>
+  <p class="klein" style="margin:0">LektorKit liest einen Brandbericht (.docx) und prüft jede Zahl gegen Prüfberichte, ResultKit, LabelKit, die Projektdaten und die anderen Projekte im Archiv. Am Bericht und an den Dateien der anderen Apps ändert es nichts.</p>
+  <div id="meldung" class="zeile versteckt"></div>
+  <div class="knoepfe">
+   <button class="haupt" id="btnProjekt">Projektordner öffnen …</button>
+   <button id="btnFreigeben" class="versteckt">Projekt öffnen</button>
+  </div>
+  <div id="berichtWahl" class="versteckt" style="display:flex;flex-direction:column;gap:10px">
+   <label class="klein" for="selBericht">Bericht in „Mitteilungen“</label>
+   <div class="knoepfe"><select id="selBericht"></select><button class="haupt" id="btnLesen">Gegenlesen</button></div>
+   <div id="ablage">Oder einen Bericht hierher ziehen (z. B. von Hand geschrieben) – <button id="btnDatei">Word-Datei wählen …</button><input type="file" id="eingabeDatei" accept=".docx" class="versteckt"></div>
+  </div>
+ </div>
+</section>
+
+<main id="haupt" class="versteckt">
+ <section id="links">
+  <div class="dateizeile"><b id="dateiName"></b><span id="dateiStand"></span></div>
+  <div id="seite" aria-label="Berichtstext mit markierten Angaben"></div>
+  <div class="legende">
+   <span><span class="m belegt" tabindex="-1">belegt<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> stimmt mit der Quelle überein</span>
+   <span><span class="m abweicht" tabindex="-1">weicht ab<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l6.3 11.3H1.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 6.5v3.4M8 11.6v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span> Quelle sagt etwas anderes</span>
+   <span><span class="m fremd" tabindex="-1">anderes Projekt<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span> gehört zu einem anderen Projekt</span>
+   <span><span class="m ohne" tabindex="-1">ohne Beleg</span> eigene Angabe, nur zur Kenntnis</span>
+  </div>
+ </section>
+ <aside id="rechts">
+  <div id="belegKarte" class="karte beleg versteckt" aria-live="polite"></div>
+  <div id="uebersicht" class="karte"></div>
+  <div id="befunde" style="display:flex;flex-direction:column;gap:12px"></div>
+ </aside>
+</main>
+
+<footer class="fuss versteckt" id="fuss">
+ <div class="klein">LektorKit liest nur. Am Bericht ändert es nichts.</div>
+ <div class="knoepfe" style="margin:0">
+  <button id="btnAndererBericht">Anderer Bericht …</button>
+  <button id="btnDrucken">Prüfprotokoll drucken</button>
+  <button class="haupt" id="btnNeu">Bericht neu einlesen</button>
+ </div>
+</footer>
+
+<dialog id="dlgKuerzel">
+ <form method="dialog">
+  <b>Wer bestätigt?</b>
+  <p class="klein">„Ist so gewollt“ wird mit deinem Kürzel und dem Datum im Projektordner vermerkt.</p>
+  <label>Dein Kürzel<select id="selKuerzel"></select><input id="txtKuerzel" placeholder="z. B. Dr.Ka" maxlength="12" class="versteckt"></label>
+  <div class="knoepfe"><button value="ok" class="haupt">Vermerken</button><button value="abbrechen">Abbrechen</button></div>
+ </form>
+</dialog>
+
+<section id="protokoll"></section>
+
+<script id="spektron-ordner">
+/* SPEKTRON-ORDNER v1 – in allen Spektron-Apps byte-gleich halten (Vorlage: Projektzentrale/spektron-ordner.js).
+   Wo liegen die App-Daten eines Projekts? Grundsatz: Alles, was ohne App nicht nutzbar ist, liegt im Unterordner
+   „_Spektron“ des Projektordners; Fotos, PDFs, Word, Excel und CSV bleiben in den Büro-Ordnern.
+
+     <Projekt>/_Spektron/BITTE NICHT ANFASSEN.txt
+     <Projekt>/_Spektron/_Projekt.json, _Projekt_Sicherungen/        (früher direkt im Projektordner)
+     <Projekt>/_Spektron/FotoKit/      _Bildumbenenner.json, _FotoKit_Fassungen/   (früher Fotos/)
+     <Projekt>/_Spektron/FotoKit/Pruefsummen/  Pruefsummen_Originale_….sha256       (früher Fotos/)
+     <Projekt>/_Spektron/LabelKit/     …_Daten.json (früher Laboraufträge/), _Ablage-Protokoll.txt (früher Feldprotokolle/)
+     <Projekt>/_Spektron/ResultKit/    _Ergebnisse.json, _Ergebnisse.vorher.json   (früher Laborergebnisse/)
+     <Projekt>/_Spektron/PlanKit/      *.probenplan                                (früher Pläne/)
+     <Projekt>/_Spektron/BelegKit/     *.json, _BelegKit_Sicherungen/   (früher Abrechnung/; die CSV bleiben in Abrechnung/)
+     <Projekt>/_Spektron/Buero/        aufgaben/, vermerke/, frühere Übergaben    (früher _Buero/)
+     <Projekt>/_Spektron/Protokolle/   _Anlagen-Protokoll.txt                      (früher Mitteilungen/)
+     <Projekt>/_Spektron/BerichtKit/   _BerichtKit.json  Angaben zum Bericht (Vor Spektron: Mitteilungen/; die Word-Datei bleibt in Mitteilungen/)
+
+   Welche Projekte: Projektnummer ab 26.0560 – oder ein „_Spektron“-Ordner ist schon da (von Hand übernommenes Projekt).
+   Projekte „Vor Spektron“ bekommen nie einen „_Spektron“-Ordner; dort gilt immer der frühere Ort.
+
+   ort(projektordner, bereich) sagt, wo ein Bereich gerade liegt. Alle Apps lesen UND schreiben dort:
+     1. Neuer Ort hat passende Einträge und der frühere keine, oder der Umzug ist vermerkt → neu.
+        Neuer Ort hat die Hauptdatei des Bereichs (z. B. _Projekt.json, nicht nur _Projekt_Sicherungen/; LabelKit: nur eine
+        „…_Daten.json“ dieses Projekts, seit 11.11.2026 – eine fremde schaltet nicht mehr um) → neu – auch, wenn
+        am früheren Ort etwas liegt („konflikt“; z. B. eine Datei, die jemand dorthin kopiert hat). Ausnahme: der Umzug dieses
+        Bereichs läuft gerade oder wurde unterbrochen („laeuft“ im Umzugsvermerk) → dann gelten noch die Originale.
+     2. Sonst: früherer Ort hat passende Einträge → alt.
+     3. Nichts da → neu, wenn „_Spektron“ schon existiert oder UMSTELLUNG an ist; sonst alt.
+   (Bis 10.11.2026 galt bei Einträgen an beiden Orten ohne Umzugsvermerk der frühere Ort – Audit K1: eine einzelne
+   kopierte Datei schaltete so ein ganzes Projekt zurück.) zweiOrte()/zweiOrteText() liefern die eine sichtbare Zeile,
+   die jede App bei „konflikt“ zeigt.
+   Der Umzug selbst (kopieren, prüfen, vermerken, löschen) gehört in die Projektzentrale; hier nur lesen und planen.
+   Läuft im Browser (globalThis.SpektronOrdner) und in Node (module.exports, für Tests). Keine Abhängigkeiten. */
+(function(root){
+'use strict';
+
+const VERSION = 1;
+const ORDNER = '_Spektron';
+const AB = '26.0560';                 // erstes Spektron-Projekt
+const UMSTELLUNG = true;              // seit dem Umzug (28.10.2026): neue Projekte landen gleich in _Spektron
+const MARKER = '_Umzug.json';         // <Projekt>/_Spektron/_Umzug.json: { format:'spektron-umzug', version:1, bereiche:{ <id>:{ am, ... } }, laeuft:{ <id>: am } }
+const HINWEIS_DATEI = 'BITTE NICHT ANFASSEN.txt';
+const HINWEIS_TEXT = [
+  'Spektron – Daten der Apps zu diesem Projekt',
+  '',
+  'In diesem Ordner speichern die Spektron-Apps (Projektzentrale, LabelKit, FotoKit, ResultKit, PlanKit, BerichtKit, BelegKit, BüroKit)',
+  'ihre Arbeitsdaten: Projektdaten, Probenerfassung, Bildangaben, Laborwerte, Plan, Berichtsangaben, Zeiten und Büroaufgaben.',
+  '',
+  'Bitte nichts löschen, umbenennen oder verschieben – auch nicht beim Aufräumen.',
+  'Ohne diesen Ordner kennen die Apps das Projekt nicht mehr.',
+  '',
+  'Fotos, Pläne, Laborberichte, Anlagen und Abrechnungen (CSV) liegen wie gewohnt in den anderen Ordnern des Projekts.',
+  ''
+].join('\r\n');
+
+const nfc = s => String(s == null ? '' : s).normalize('NFC');
+const gleich = (a, b) => nfc(a).toLowerCase() === nfc(b).toLowerCase();
+/* Eintrag passt nur mit Name UND Art: ein Ordner „_Ergebnisse.json“ oder eine Datei „_Projekt_Sicherungen“ zählt nicht. */
+const datei = (...namen) => (name, art) => art === 'file' && namen.some(n => gleich(name, n));
+const ordner = (...namen) => (name, art) => art === 'directory' && namen.some(n => gleich(name, n));
+const muster = re => (name, art) => art === 'file' && re.test(nfc(name));
+const oder = (...regeln) => (name, art) => regeln.some(r => r(name, art));
+
+/* Bereiche: alt = Pfad ab Projektordner, neu = Pfad ab _Spektron, passt(name, art) = gehört der Eintrag dazu,
+   haupt(name, art, k) = die Datei, mit der die App arbeitet (Sicherungen, Vorher-Kopien und leere Ordner zählen nicht) –
+   nur sie lässt den neuen Ort gegen Einträge am früheren Ort gewinnen (ohne haupt: wie passt). k = { nr } aus dem
+   Projektordnernamen (PlanKit: die Hauptdatei heißt „Probenplan <Projektnummer> ….probenplan“). */
+const BEIWERK = /^(thumbs\.db|desktop\.ini|\.ds_store)$|\.crswap$/i;   // Windows/Chrome-Beiwerk – wie im Umzug: zählt nie als App-Datei
+const PLAN_NEBEN = / \((vorher|Wiederherstellung|Speicherkandidat|Kopie)\b[^)]*\)\.probenplan$/i;   // wie PlanKits Leiste
+const NR = /^(\d{2}\.\d{2,6})(?:[\s_-]|$)/;                                    // Projektnummer am Anfang des Ordnernamens
+const PLAN_NR = /^Probenplan (\d{2}\.\d{2,6})(?:[\s_-]|\.probenplan$)/i;          // „Probenplan 26.0606 ….probenplan“
+const projektNr = name => (NR.exec(nfc(name).trim()) || [])[1] || '';
+/* PlanKit-Hauptdatei: keine Sicherung UND – wenn der Ordnername eine Projektnummer hat – „Probenplan <diese Nummer> …“.
+   Die Nummer bleibt bei einem umbenannten Ordner (Dr.Ka → Dr. Ka) gleich; Notfallkopien („PlanKit Notfallkopie …“) und
+   Downloads („<Ordnername>.probenplan“) zählen so nie. Ohne lesbare Nummer: jede .probenplan ohne Sicherungs-Zusatz. */
+function planHaupt(name, art, k){
+  const n = nfc(name);
+  if (art !== 'file' || !/\.probenplan$/i.test(n) || PLAN_NEBEN.test(n)) return false;
+  if (!k || !k.nr) return true;
+  return (PLAN_NR.exec(n) || [])[1] === k.nr;
+}
+/* LabelKit-Projektdatei – dieselbe Regel wie LabelKit 5.1.0 (eigeneProjektdatei/projektdateienLesen), Audit o7/m1 (11.11.2026):
+   eigen = Name (NFC, ohne Rand-Leerzeichen) beginnt mit der Projektnummer, danach keine Ziffer („26.0604_Daten.json“, auch die
+   datierten „26.0604_12.10.2025_Daten.json“; nicht „26.06041…“). Die Nummer wird wie in LabelKit gelesen (2 Ziffern, Punkt, 3–6
+   Ziffern); ohne solche Nummer zählt jede „…_Daten.json“ als eigen. Fremde Dateien werden nie gelesen. */
+const LK_DATEI = /_Daten\.json$/i;
+const LK_NR = /(?<!\d)\d{2}\.\d{3,6}(?!\d)/;
+const lkNr = nr => (LK_NR.exec(nfc(nr)) || [''])[0];
+function labelkitEigen(name, nr){
+  if (!LK_DATEI.test(nfc(name))) return false;
+  const k = lkNr(nr); if (!k) return true;
+  const n = nfc(name).trim();
+  return n.startsWith(k) && !/^\d/.test(n.slice(k.length));
+}
+const lkHaupt = (name, art, k) => art === 'file' && labelkitEigen(name, k && k.nr);
+/** Welche LabelKit-Datei gilt im Ordner dir (Projektordnername für die Nummer)? Wie LabelKit: „<Nr>_Daten.json“ gilt; eine andere
+    eigene Datei nur, wenn sie laut „gespeichertAm“ später gespeichert wurde (Kopieren setzt das Änderungsdatum neu); ohne feste Datei
+    die eigene mit dem neuesten Änderungsdatum. → { datei: { name, file, text } | null, fremd: [Namen], eigene: [Namen] }.
+    Keine eigene Datei → datei null – nie auf eine fremde ausweichen. */
+const lkGespeichert = text => { try{ const t = Date.parse(JSON.parse(text).gespeichertAm); return isNaN(t) ? null : t; }catch(e){ return null; } };
+async function labelkitWahl(dir, projektName){
+  const r = { datei: null, fremd: [], eigene: [] };
+  if (!auflistbar(dir)) return r;
+  const nr = projektNr(projektName), k = lkNr(nr) || nr, fest = k ? nfc(k + '_Daten.json').toLowerCase() : null, alle = [];
+  for await (const h of dir.values()){
+    if (h.kind !== 'file' || !LK_DATEI.test(nfc(h.name))) continue;
+    if (!labelkitEigen(h.name, nr)){ r.fremd.push(h.name); continue; }   // fremde Datei: nicht einmal lesen
+    const file = await (await dir.getFileHandle(h.name)).getFile();
+    alle.push({ name: h.name, file, text: await file.text(), fest: fest !== null && nfc(h.name).toLowerCase() === fest });
+    r.eigene.push(h.name);
+  }
+  r.fremd.sort((a, b) => a.localeCompare(b));
+  const f = alle.find(e => e.fest);
+  if (f){
+    let beste = lkGespeichert(f.text); if (beste === null) beste = f.file.lastModified;
+    r.datei = f;
+    for (const e of alle){ const t = e.fest ? null : lkGespeichert(e.text); if (t !== null && t > beste){ beste = t; r.datei = e; } }
+  } else for (const e of alle) if (!r.datei || e.file.lastModified > r.datei.file.lastModified) r.datei = e;
+  if (r.datei) r.datei = { name: r.datei.name, file: r.datei.file, text: r.datei.text };
+  return r;
+}
+const BEREICHE = Object.freeze({
+  projekt:            Object.freeze({ app: 'Projektzentrale, FotoKit', alt: [], neu: [], passt: oder(datei('_Projekt.json'), ordner('_Projekt_Sicherungen')), haupt: datei('_Projekt.json') }),
+  fotokit:            Object.freeze({ app: 'FotoKit', alt: ['Fotos'], neu: ['FotoKit'], passt: oder(datei('_Bildumbenenner.json'), ordner('_FotoKit_Fassungen')), haupt: datei('_Bildumbenenner.json') }),
+  fotokitPruefsummen: Object.freeze({ app: 'FotoKit', alt: ['Fotos'], neu: ['FotoKit', 'Pruefsummen'], passt: muster(/^Pruefsummen_Originale_.*\.sha256$/i) }),
+  // haupt: nur die LabelKit-Datei dieses Projekts (Audit o7) – eine fremde „…_Daten.json“ in „_Spektron/LabelKit“ schaltet den Bereich nicht um.
+  // fremd: was passt, aber nicht haupt ist, gehört zu einem anderen Projekt (für die Zeile). passt bleibt: der Umzug nimmt weiter jede mit.
+  labelkit:           Object.freeze({ app: 'LabelKit', alt: ['Laboraufträge'], neu: ['LabelKit'], passt: muster(/_Daten\.json$/i), haupt: lkHaupt, fremd: true }),
+  labelkitAblage:     Object.freeze({ app: 'LabelKit', alt: ['Feldprotokolle'], neu: ['LabelKit'], passt: datei('_Ablage-Protokoll.txt') }),
+  resultkit:          Object.freeze({ app: 'ResultKit', alt: ['Laborergebnisse'], neu: ['ResultKit'], passt: datei('_Ergebnisse.json', '_Ergebnisse.vorher.json'), haupt: datei('_Ergebnisse.json') }),
+  plankit:            Object.freeze({ app: 'PlanKit', alt: ['Pläne'], neu: ['PlanKit'], passt: muster(/\.probenplan$/i), haupt: planHaupt }),
+  // nur die Dateien, die BelegKit selbst schreibt (dieselben Muster wie BelegKits Leser): Zeiten je Person, Berichtsangaben, Stände – andere JSON bleiben
+  belegkit:           Object.freeze({ app: 'BelegKit', alt: ['Abrechnung'], neu: ['BelegKit'], passt: oder(muster(/^Aufwand_[A-Za-zÄÖÜäöü]{1,6}\.json$/), datei('_Abrechnung.json'), muster(/^.+_Aufwand_\d{4}-\d{2}-\d{2}(?:_\d+)?\.json$/i), ordner('_BelegKit_Sicherungen')),
+    haupt: oder(muster(/^Aufwand_[A-Za-zÄÖÜäöü]{1,6}\.json$/), datei('_Abrechnung.json'), muster(/^.+_Aufwand_\d{4}-\d{2}-\d{2}(?:_\d+)?\.json$/i)) }),
+  buero:              Object.freeze({ app: 'BüroKit, Projektzentrale', alt: ['_Buero'], neu: ['Buero'], passt: name => !BEIWERK.test(nfc(name)) }),
+  anlagenProtokoll:   Object.freeze({ app: 'Projektzentrale, PlanKit', alt: ['Mitteilungen'], neu: ['Protokolle'], passt: datei('_Anlagen-Protokoll.txt') }),
+  berichtkit:         Object.freeze({ app: 'BerichtKit', alt: ['Mitteilungen'], neu: ['BerichtKit'], passt: datei('_BerichtKit.json') })
+});
+
+/** Projektnummer → Zahl zum Vergleichen (26.0560 → 26000560), sonst null. Gleiche Regel wie SPEKTRON-ORDNERNAME. */
+function projektKey(name){
+  const m = /^(\d{2})\.(\d{2,6})(?:[\s_-]|$)/.exec(nfc(name).trim());
+  return m ? (+m[1]) * 1e6 + (+m[2]) : null;
+}
+const AB_KEY = projektKey(AB);
+
+/* Ein Ordner, der sich nicht auflisten lässt (nur Testobjekte – echte Ordner können das immer), gilt als leer;
+   ein solcher Projektordner bleibt immer beim bisherigen Ort. */
+const auflistbar = dir => !!dir && typeof dir.values === 'function';
+async function kind(dir, name){
+  if (!auflistbar(dir)) return null;
+  for await (const h of dir.values()) if (gleich(h.name, name)) return h;
+  return null;
+}
+/** Unterordner entlang eines Pfads: zuerst direkt mit dem Namen (wie findSubdir in den Apps), sonst gesucht –
+    ohne Groß-/Kleinschreibung und Unicode-Form verglichen. */
+async function unter(dir, pfad, anlegen){
+  let d = dir;
+  for (const teil of pfad){
+    let direkt = null;
+    try{ direkt = await d.getDirectoryHandle(teil); }catch(e){ /* fehlt, andere Schreibweise oder Datei gleichen Namens */ }
+    if (direkt){ d = direkt; continue; }
+    const h = await kind(d, teil);
+    if (h && h.kind === 'directory'){ d = await d.getDirectoryHandle(h.name); continue; }
+    if (h || !anlegen) return null;        // Datei gleichen Namens oder nicht anlegen
+    d = await d.getDirectoryHandle(teil, { create: true });
+  }
+  return d;
+}
+async function passende(dir, b){
+  const r = [];
+  if (auflistbar(dir)) for await (const h of dir.values()) if (b.passt(h.name, h.kind)) r.push({ name: h.name, art: h.kind });
+  return r;
+}
+/** Liegt am Ort die Hauptdatei des Bereichs? Leere Dateien (0 Byte), leere Ordner (auch verschachtelt) und Windows-Beiwerk
+    zählen nicht – so bleibt ein abgebrochenes Kopieren zurück, und das ist kein Ersatz für die Dateien am früheren Ort. */
+// Nicht lesbar (z. B. SMB kurz weg) zählt als vorhanden – nie als „leer“, sonst schaltete ein Lesefehler auf den früheren Ort zurück (Codex)
+async function dateiMitInhalt(fh){ try{ return (await fh.getFile()).size > 0; }catch(e){ return true; } }
+async function ordnerMitInhalt(d, tiefe){
+  if (!auflistbar(d) || tiefe > 8) return false;
+  for await (const y of d.values()){
+    if (BEIWERK.test(nfc(y.name))) continue;
+    try{
+      if (y.kind === 'directory'){ if (await ordnerMitInhalt(await d.getDirectoryHandle(y.name), tiefe + 1)) return true; }
+      else if (await dateiMitInhalt(await d.getFileHandle(y.name))) return true;
+    }catch(e){ return true; }   // nicht lesbar = vorhanden
+  }
+  return false;
+}
+async function hauptDa(dir, b, k){
+  if (!auflistbar(dir)) return false;
+  const h = b.haupt ? (n, a) => b.haupt(n, a, k) : b.passt;
+  for await (const x of dir.values()){
+    if (BEIWERK.test(nfc(x.name)) || !h(x.name, x.kind)) continue;
+    try{
+      if (x.kind === 'directory'){ if (await ordnerMitInhalt(await dir.getDirectoryHandle(x.name), 1)) return true; }
+      else if (await dateiMitInhalt(await dir.getFileHandle(x.name))) return true;
+    }catch(e){ return true; }   // nicht lesbar = vorhanden
+  }
+  return false;
+}
+async function hatSpektron(projektDir){
+  const h = await kind(projektDir, ORDNER);
+  return h && h.kind === 'directory' ? await projektDir.getDirectoryHandle(h.name) : null;
+}
+async function umzugVermerk(sp){
+  if (!sp) return null;
+  try{
+    const h = await kind(sp, MARKER);
+    if (!h || h.kind !== 'file') return null;
+    const o = JSON.parse(await (await (await sp.getFileHandle(h.name)).getFile()).text());
+    return o && o.format === 'spektron-umzug' && typeof o.version === 'number' && o.version >= 1 && o.bereiche && typeof o.bereiche === 'object' ? o : null;   // auch neuere Fassungen zählen als Vermerk
+  }catch(e){ return null; }          // unlesbar = kein Vermerk; dann gilt der frühere Ort, solange dort etwas liegt
+}
+async function hinweisSchreiben(sp){
+  if (await kind(sp, HINWEIS_DATEI)) return;
+  const w = await (await sp.getFileHandle(HINWEIS_DATEI, { create: true })).createWritable();
+  try{ await w.write(HINWEIS_TEXT); await w.close(); }catch(e){ try{ await w.abort(); }catch(_){} throw e; }
+}
+/** „_Spektron“ holen; mit anlegen auch erstellen (einmalig mit Hinweisdatei). */
+async function spektronDir(projektDir, anlegen){
+  let sp = await hatSpektron(projektDir);
+  if (!sp && anlegen){
+    if (await kind(projektDir, ORDNER)) throw Error('Im Projektordner liegt eine Datei „' + ORDNER + '“ – bitte umbenennen.');
+    sp = await projektDir.getDirectoryHandle(ORDNER, { create: true });
+  }
+  if (sp && anlegen) await hinweisSchreiben(sp);
+  return sp;
+}
+
+/** Spektron-Projekt: Nummer ab 26.0560 oder „_Spektron“-Ordner vorhanden. */
+async function istSpektronProjekt(projektDir){
+  const k = projektKey(projektDir.name);
+  if (k != null && k >= AB_KEY) return true;
+  return !!(await hatSpektron(projektDir));
+}
+
+/** Wo liegt der Bereich? → { dir, wo:'neu'|'alt', pfad, konflikt, umgezogen, unterbrochen, bereich }.
+    dir ist null, wenn der Ordner fehlt und anlegen nicht gesetzt ist. Mit anlegen am neuen Ort wird auch die Hinweisdatei
+    ergänzt, falls sie fehlt. konflikt = an beiden Orten liegen passende Einträge; es gilt dann der neue Ort. Mit umgezogen
+    (Umzug vermerkt) sind das Nachzügler am früheren Ort – z. B. von einer noch offenen alten App-Version; ohne Vermerk eine
+    dorthin kopierte oder gespeicherte Datei. unterbrochen = Umzug des Bereichs begonnen, aber nicht vermerkt: dann gilt
+    noch der frühere Ort (die Kopien in „_Spektron“ können unvollständig sein). Gelöscht wird hier nie etwas. */
+async function ort(projektDir, bereich, optionen){
+  const b = BEREICHE[bereich];
+  if (!b) throw Error('Unbekannter Spektron-Bereich: ' + bereich);
+  const anlegen = !!(optionen && optionen.anlegen);
+  const altPfad = b.alt, neuPfad = [ORDNER].concat(b.neu);
+  const fertig = async (wo, dir, konflikt, umgezogen, unterbrochen) => {
+    if (anlegen && wo === 'neu'){ const sp = await spektronDir(projektDir, true); if (!dir) dir = await unter(sp, b.neu, true); }
+    else if (anlegen && !dir) dir = await unter(projektDir, altPfad, true);
+    return { dir: dir || null, wo, pfad: (wo === 'neu' ? neuPfad : altPfad).join('/'), konflikt: !!konflikt, umgezogen: !!umgezogen, unterbrochen: !!unterbrochen, bereich };
+  };
+  const altDir = await unter(projektDir, altPfad, false);
+  if (!auflistbar(projektDir) || !(await istSpektronProjekt(projektDir))) return fertig('alt', altDir, false, false, false);
+  const sp = await hatSpektron(projektDir);
+  const neuDir = sp ? await unter(sp, b.neu, false) : null;
+  const altHat = (await passende(altDir, b)).length > 0;
+  const neuHat = (await passende(neuDir, b)).length > 0;
+  const konflikt = altHat && neuHat;
+  const v = (await umzugVermerk(sp)) || { bereiche: {} };
+  const umgezogen = !!v.bereiche[bereich];
+  const unterbrochen = !umgezogen && !!(v.laeuft && typeof v.laeuft === 'object' && v.laeuft[bereich]);
+  const k = { nr: projektNr(projektDir.name) };
+  // Codex (11.11.2026): Umzug vermerkt, in „_Spektron/LabelKit“ aber nur Dateien anderer Projekte und die Datei dieses Projekts am
+  // früheren Ort (z. B. von einer älteren App-Fassung) → der frühere Ort gilt. Nur für LabelKit (fremd); alle anderen Bereiche wie bisher.
+  const nurFremdNeu = umgezogen && altHat && !!b.fremd && !(await hauptDa(neuDir, b, k)) && await hauptDa(altDir, b, k);
+  if (neuHat && (!altHat || umgezogen) && !nurFremdNeu) return fertig('neu', neuDir, konflikt, umgezogen, false);
+  if (altHat && !unterbrochen && !nurFremdNeu && await hauptDa(neuDir, b, k)) return fertig('neu', neuDir, konflikt, umgezogen, false);   // K1
+  if (altHat) return fertig('alt', altDir, konflikt, umgezogen, unterbrochen);
+  return (sp || UMSTELLUNG) ? fertig('neu', neuDir, false, umgezogen, false) : fertig('alt', altDir, false, umgezogen, false);
+}
+
+/* ---------- Die eine sichtbare Zeile bei Dateien an zwei Orten (für alle Apps gleich) ---------- */
+const zwei = n => String(n).padStart(2, '0');
+function datumText(ms){
+  if (!ms) return '';
+  const d = new Date(ms);
+  return zwei(d.getDate()) + '.' + zwei(d.getMonth() + 1) + '.' + d.getFullYear() + ', ' + zwei(d.getHours()) + ':' + zwei(d.getMinutes());
+}
+async function eintraegeMitDatum(dir, b, k){
+  const r = [];
+  if (!auflistbar(dir)) return r;
+  for await (const h of dir.values()){
+    if (!b.passt(h.name, h.kind)) continue;
+    let zeit = 0;
+    if (h.kind === 'file'){ try{ zeit = (await (await dir.getFileHandle(h.name)).getFile()).lastModified || 0; }catch(e){} }
+    r.push({ name: h.name, ordner: h.kind === 'directory', zeit, haupt: !b.haupt || b.haupt(h.name, h.kind, k) });
+  }
+  // Hauptdateien zuerst (die Datei, mit der die App arbeitet – nicht eine Sicherung), dann Dateien vor Ordnern, neueste zuerst
+  return r.sort((a, c) => (c.haupt - a.haupt) || (a.ordner - c.ordner) || (c.zeit - a.zeit) || a.name.localeCompare(c.name));
+}
+/** Bereiche mit Dateien an beiden Orten (nur lesen). bereiche: Liste der Bereich-IDs, die die App nutzt (Standard: alle).
+    → [{ bereich, app, wo, umgezogen, unterbrochen, neuPfad, altPfad, neu:[{name,ordner,zeit}], alt:[…], altNeuer }] */
+async function zweiOrte(projektDir, bereiche){
+  const aus = [];
+  if (!projektDir || !auflistbar(projektDir) || !(await istSpektronProjekt(projektDir))) return aus;
+  const sp = await hatSpektron(projektDir);
+  for (const id of (bereiche || Object.keys(BEREICHE))){
+    const b = BEREICHE[id]; if (!b) continue;
+    const o = await ort(projektDir, id);
+    if (!o.konflikt) continue;
+    const k = { nr: projektNr(projektDir.name) };
+    const neu = await eintraegeMitDatum(sp ? await unter(sp, b.neu, false) : null, b, k);
+    const alt = await eintraegeMitDatum(await unter(projektDir, b.alt, false), b, k);
+    // „neuer“ nur nach den Hauptdateien beurteilen (eine neuere Sicherung sagt nichts über die Datei, die die App liest)
+    const max = l => { const h = l.filter(e => e.haupt && !e.ordner); return (h.length ? h : l).reduce((m, e) => Math.max(m, e.zeit || 0), 0); };
+    aus.push({ bereich: id, app: b.app, wo: o.wo, umgezogen: o.umgezogen, unterbrochen: o.unterbrochen,
+      neuPfad: [ORDNER].concat(b.neu).join('/'), altPfad: b.alt.join('/'), neu, alt, altNeuer: max(alt) > max(neu),
+      nurFremd: !!b.fremd && neu.length > 0 && !neu.some(e => e.haupt) });   // in „_Spektron“ nur Dateien anderer Projekte
+  }
+  return aus;
+}
+/* Je Seite eine Datei nennen (die mit gleichem Namen wie auf der anderen Seite, sonst die neueste), Rest als „und n weitere“. */
+function dateienText(pfad, liste, bevorzugt){
+  const pf = n => '„' + (pfad ? pfad + '/' : '') + n + '“';
+  const haupt = (bevorzugt && liste.find(e => gleich(e.name, bevorzugt))) || liste[0];
+  if (!haupt) return '';
+  const t = haupt.ordner ? pf(haupt.name + '/') : pf(haupt.name) + (haupt.zeit ? ' (' + datumText(haupt.zeit) + ')' : '');
+  return liste.length > 1 ? t + ' und ' + (liste.length - 1) + ' weitere' : t;
+}
+/** Eine Zeile Klartext zu einem Eintrag aus zweiOrte() – „du“, ohne Fachwörter. optionen.projektzentrale: ohne den
+    Verweis auf die Projektzentrale (dort steht das Weitere direkt darunter). */
+function zweiOrteText(e, optionen){
+  const pz = !(optionen && optionen.projektzentrale);
+  const altOrt = e.altPfad ? 'in „' + e.altPfad + '“' : 'im Projektordner';
+  const a = e.alt[0] ? e.alt[0].name : '', altText = dateienText(e.altPfad, e.alt), neuText = dateienText(e.neuPfad, e.neu, a);
+  if (e.wo === 'alt' && !e.unterbrochen && e.nurFremd){   // Audit o7: fremde Datei in „_Spektron“, die eigene am früheren Ort
+    const n = e.neu.filter(x => !x.ordner).map(x => x.name), fremd = '„' + n[0] + '“' + (n.length > 1 ? ' und ' + (n.length - 1) + ' weitere' : '');
+    return '⚠ ' + e.app + ': Dateien an zwei Orten. Es gilt ' + altText + '. In „' + e.neuPfad + '“ ' + (n.length > 1 ? 'liegen' : 'liegt') + ' nur ' + fremd +
+      ' – nach dem Namen nicht von diesem Projekt; keine App liest sie.' + (pz ? ' Gelöscht wird nichts – in der Projektzentrale steht, was zu tun ist.' : '');
+  }
+  if (e.wo === 'alt' && e.unterbrochen) return '⚠ ' + e.app + ': Dateien an zwei Orten – der Umzug in „' + ORDNER + '“ wurde unterbrochen. Es gilt noch ' +
+    altText + '. Nicht verwendet: ' + neuText + '.' + (pz ? ' Bitte in der Projektzentrale „Umzug erneut ausführen“.' : '');
+  if (e.wo === 'alt') return '⚠ ' + e.app + ': Dateien an zwei Orten. Es gilt noch ' + altText + ' – in „' + ORDNER + '“ liegt nur ' +
+    'eine Sicherung, eine leere Datei oder ein leerer Ordner, nicht die Datei selbst (vermutlich ein unvollständiger Umzug). Nicht verwendet: ' + neuText + '.' +
+    (pz ? ' Bitte in der Projektzentrale „Umzug erneut ausführen“.' : '');
+  return '⚠ ' + e.app + ': Dateien an zwei Orten. Es gilt ' + neuText + '. Nicht verwendet: ' + altText + '.' +
+    (e.altNeuer ? ' Die Datei ' + altOrt + ' ist neuer – vielleicht hat eine ältere App-Fassung dort gespeichert. Schließ alle Spektron-Tabs auf allen PCs und öffne sie neu.' : '') +
+    (pz ? ' Gelöscht wird nichts – in der Projektzentrale steht, was mit der Datei ' + altOrt + ' zu tun ist.' : '');
+}
+
+/** Für den Umzug (nur lesen): je Bereich, was am früheren Ort liegt und wohin es gehört. Leer für Projekte „Vor Spektron“. */
+async function umzugListe(projektDir){
+  if (!(await istSpektronProjekt(projektDir))) return [];
+  const liste = [];
+  for (const id of Object.keys(BEREICHE)){
+    const b = BEREICHE[id];
+    const eintraege = await passende(await unter(projektDir, b.alt, false), b);
+    if (eintraege.length) liste.push({ bereich: id, app: b.app, von: b.alt.join('/'), nach: [ORDNER].concat(b.neu).join('/'), eintraege });
+  }
+  return liste;
+}
+
+const api = Object.freeze({ VERSION, ORDNER, AB, UMSTELLUNG, MARKER, HINWEIS_DATEI, HINWEIS_TEXT, BEREICHE,
+  projektKey, projektNr, planHaupt, labelkitEigen, labelkitWahl, istSpektronProjekt, ort, umzugListe, spektronDir, unter, hauptDa, zweiOrte, zweiOrteText, datumText });
+if (typeof module !== 'undefined' && module.exports) module.exports = api;
+root.SpektronOrdner = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+/* SPEKTRON-ORDNER-ENDE */
+</script>
+<script id="archiv-auswertung">
+/* Spektron Datenarchiv – reine Auswertung (kein Dateizugriff, keine Oberfläche; in Node geprüft: tests/archiv.cjs).
+   Grundsätze:
+   • Nichts wird erfunden: keine Grenz- oder Orientierungswerte, keine Schwellen für Quotienten.
+   • Werte unter BG / n. n. sind nie null, sondern „unter BG“ und zählen bei Rangstatistiken als kleinste Werte.
+   • Welcher Prüfbericht gilt, entscheidet die Regel von ResultKit 2.2 (Fassung -01/-02, nie das Dateidatum; zwei Berichte für
+     dieselbe Probe und Berichte eines anderen Projekts zählen nicht). Vorläufige Werte ohne endgültigen sind gekennzeichnet
+     und aus der Statistik ausgeschlossen.
+   • Einheiten werden nicht umgerechnet: µg/m², µg/100 cm² und mg/kg bleiben getrennte Gruppen. */
+(function(root){
+  'use strict';
+  const tidy = s => String(s ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
+  const norm = s => tidy(s).toLocaleLowerCase('de').replace(/[^\p{L}\p{N}]/gu, '');
+  const MIN_N = 5;
+
+  /** Zahl wie in PlanKit (results.ts labNumber): streng, ohne Ländereinstellung; mehrdeutig (1.234) → NaN. */
+  function zahl(raw){
+    const t = String(raw ?? '').trim().replace(/−/g, '-');
+    const m = t.match(/^([+-]?)([\d.,   ]+)([eE][+-]?\d+)?$/); if (!m) return NaN;
+    let body = m[2].trim(); const exp = m[3] || '';
+    if (/[   ]/.test(body)){
+      if (!/^\d{1,3}(?:[   ]\d{3})+(?:[.,]\d+)?$/.test(body)) return NaN;
+      body = body.replace(/[   ]/g, '').replace(',', '.');
+    } else if (body.includes('.') && body.includes(',')){
+      const dec = body.lastIndexOf('.') > body.lastIndexOf(',') ? '.' : ',', grp = dec === '.' ? ',' : '.';
+      const parts = body.split(dec); if (parts.length !== 2 || !/^\d+$/.test(parts[1]) || !new RegExp('^\\d{1,3}(?:\\' + grp + '\\d{3})+$').test(parts[0])) return NaN;
+      body = parts[0].split(grp).join('') + '.' + parts[1];
+    } else if (/[.,]/.test(body)){
+      const parts = body.split(/[.,]/);
+      if (parts.length === 2){ if (!/^\d+$/.test(parts[0]) || !/^\d+$/.test(parts[1]) || (parts[1].length === 3 && /^[1-9]\d{0,2}$/.test(parts[0]))) return NaN; body = parts.join('.'); }
+      else { if (!/^\d{1,3}([.,])\d{3}(?:\1\d{3})+$/.test(body)) return NaN; body = parts.join(''); }
+    }
+    const v = Number(m[1] + body + exp); return Number.isFinite(v) ? v : NaN;
+  }
+  /** Ergebnis lesen: { q: 'gemessen' | 'unter' | 'nn' | 'nb' | 'unklar', v: Messwert bzw. Bestimmungsgrenze oder null }. */
+  function ergebnis(raw, loq){
+    let t = tidy(raw); if (t.startsWith('(') && t.endsWith(')')) t = t.slice(1, -1).trim();
+    const bg = () => { const v = zahl(loq); return Number.isFinite(v) && v >= 0 ? v : null; };
+    if (/^unter\s+BG$/i.test(t)) return { q: 'unter', v: bg() };
+    if (/^n\.\s*n\.$/i.test(t)) return { q: 'nn', v: bg() };
+    if (/^n\.\s*b\.$/i.test(t)) return { q: 'nb', v: null };
+    if (t.startsWith('<')){ const v = zahl(t.slice(1)); return Number.isFinite(v) && v >= 0 ? { q: 'unter', v } : { q: 'unklar', v: null }; }
+    const v = zahl(t); return Number.isFinite(v) ? { q: 'gemessen', v } : { q: 'unklar', v: null };
+  }
+  /** Einheit vereinheitlichen, ohne umzurechnen (Leerzeichen, griechisches My, hochgestellte Zwei). */
+  const einheit = u => tidy(u).replace(/μ/g, 'µ').replace(/\s*\/\s*/g, '/').replace(/m2\b/g, 'm²').replace(/cm2\b/g, 'cm²');
+
+  /* 16 EPA-PAK in der üblichen Reihenfolge. Namen aus Eurofins-Berichten (deutsch) und englische Schreibweisen. */
+  const PAK16 = [
+    ['Nap', 'Naphthalin', ['naphthalin', 'naphthalen']], ['Acy', 'Acenaphthylen', ['acenaphthylen']], ['Ace', 'Acenaphthen', ['acenaphthen']],
+    ['Flu', 'Fluoren', ['fluoren']], ['Phe', 'Phenanthren', ['phenanthren']], ['Ant', 'Anthracen', ['anthracen']],
+    ['Flt', 'Fluoranthen', ['fluoranthen']], ['Pyr', 'Pyren', ['pyren']], ['BaA', 'Benzo[a]anthracen', ['benzaanthracen']],
+    ['Chr', 'Chrysen', ['chrysen']], ['BbF', 'Benzo[b]fluoranthen', ['benzbfluoranthen', 'benzbjfluoranthen']], ['BkF', 'Benzo[k]fluoranthen', ['benzkfluoranthen']],
+    ['BaP', 'Benzo[a]pyren', ['benzapyren']], ['IcdP', 'Indeno[1,2,3-cd]pyren', ['indeno123cdpyren']], ['DahA', 'Dibenz[a,h]anthracen', ['dibenzahanthracen']],
+    ['BghiP', 'Benzo[ghi]perylen', ['benzghiperylen']]];
+  const PAK_SCHLUESSEL = new Map(); PAK16.forEach(([, , ks], i) => ks.forEach(k => PAK_SCHLUESSEL.set(k, i)));
+  /** Index 0–15 eines Einzel-PAK, sonst -1 (Summen, Methylnaphthaline usw.). */
+  function pakIndex(name){
+    const k = norm(name).replace(/e$/, '').replace(/^dibenzo/, 'dibenz').replace(/^benzo/, 'benz');
+    return PAK_SCHLUESSEL.has(k) ? PAK_SCHLUESSEL.get(k) : -1;
+  }
+  /* Diagnostische Quotienten nach Yunker et al. (2002), Org. Geochem. 33, 489–515. Ohne Schwellen: Diese wurden überwiegend
+     für Sedimente und Luft hergeleitet; die Übertragbarkeit auf Brandrückstände in Innenräumen ist offen. */
+  const QUOTIENTEN = [['Flt/(Flt+Pyr)', 6, 7], ['BaA/(BaA+Chr)', 8, 9], ['IcdP/(IcdP+BghiP)', 13, 15], ['Ant/(Ant+Phe)', 5, 4]];
+  const QUELLE = 'Yunker, M. B. et al. (2002): PAHs in the Fraser River basin: a critical appraisal of PAH ratios as indicators of PAH source and composition. Organic Geochemistry 33, 489–515.';
+
+  /** Jahr aus dem Projektordner „26.0142 Ort“ → 2026; null ohne Nummer. */
+  function projektKopf(name){
+    const m = /^(\d{2})\.(\d{2,6})(?:[\s_-]+(.*))?$/.exec(tidy(name)); if (!m) return null;
+    const yy = Number(m[1]), jetzt = new Date().getFullYear() % 100;
+    return { nr: m[1] + '.' + m[2], jahr: (yy <= jetzt + 1 ? 2000 : 1900) + yy };
+  }
+
+  /* ---------- Welcher Prüfbericht gilt (ab 1.3, Audit o1) – Regel wie ResultKit 2.2 (src/ergebnisse.ts, dort gleich halten) ----------
+     • Gleiche Berichtsnummer mehrfach abgelegt → Datei mit Messwerten, dann endgültig vor vorläufig, sonst die neuere Datei
+       (nur hier zählt das Dateidatum).
+     • Eurofins-Fassung = genau zwei Ziffern nach dem letzten Strich („AR-…-01“, „-02“). Je Probe/Parameter innerhalb derselben
+       Grundnummer: endgültig vor vorläufig, dann die höhere Fassung – nie das Dateidatum.
+     • Verschiedene Grundnummern ersetzen einander nie: gleiche Probe/Parameter in zwei Berichten = Konflikt, keiner zählt.
+     • Die Einheit gehört nicht zum Schlüssel (ab 1.3.1, Audit o41, wie ResultKit 2.5, Entscheidung 11.11.2026 Variante A): eine neue
+       Fassung in µg/cm² ersetzt die alte in mg/m², zwei Grundnummern in verschiedenen Einheiten sind ein Konflikt. Umgerechnet
+       wird nichts; vom geltenden Bericht bleiben alle Einheiten eines Parameters (Chlorid „µg/Probe“ und „µg/cm²“).
+     • Auftragsreferenz nennt eine andere Projektnummer → der Bericht zählt nicht.
+     Probe = Probennummer aus „Probe n“, sonst Probenreferenz, sonst Labornummer (wie ResultKit). */
+  const kurz = s => tidy(s).toLocaleLowerCase('de').replace(/[^\p{L}\p{N}]/gu, '');
+  /** „Probe 3“ / „P3“ / „26.0142-3“ → „P3“, sonst '' (ResultKit referenceLabel). */
+  function probeLabel(ref){
+    const s = tidy(ref), m = s.match(/^(?:Probe|P)\s*(\d+)$/i) || s.match(/^\d{2}\.\d{3,5}\s*-\s*(\d+)$/); if (!m) return '';
+    const n = Number(m[1]); return Number.isSafeInteger(n) && n > 0 && n < 1e9 ? 'P' + n : '';
+  }
+  const probeKey = s => probeLabel(s.ref) || kurz(s.ref) || kurz(s.labNr);
+  /* Schlüssel ohne Einheit (ab 1.3.1, o41; 1.3 hatte die vereinheitlichte Einheit, Codex P2 auf #80): sonst bliebe eine ältere
+     Fassung in mg/m² neben der neueren in µg/cm² stehen. Gleich wie wkey in ResultKit src/ergebnisse.ts (dort gleich halten). */
+  const wertKey = (s, w) => probeKey(s) + '\u0000' + tidy(w.p);
+  /** Grundnummer und Fassung (ResultKit berichtsFassung; die Eurofins-XML ist immer Eurofins). */
+  function berichtsFassung(bericht){
+    const t = tidy(bericht).replace(/[‐-―−]/g, '-').replace(/\s+/g, '').toUpperCase(), m = /^(.*[^-])-(\d{2})$/.exec(t);
+    return m ? { grund: m[1], fassung: Number(m[2]) } : { grund: t, fassung: null };
+  }
+  /** Projektnummer „26.0142“ aus einer Auftragsreferenz (wie ResultKit). */
+  const projektnummer = s => (String(s || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+
+  /** Ein Messwert wie in der Auswertung (probe = Labornummer, sonst Referenz – Schlüssel der Rollen-Korrekturen). */
+  function messung(b, pr, w, key){
+    const e = ergebnis(w.r, w.loq), bg = zahl(w.loq);
+    return { key, probe: tidy(pr.labNr) || tidy(pr.ref), label: probeLabel(pr.ref), ref: tidy(pr.ref), desc: tidy(pr.desc), art: tidy(pr.art), datum: pr.datum || '', p: tidy(w.p), u: einheit(w.u),
+      q: e.q, v: e.v, bg: Number.isFinite(bg) && bg >= 0 ? bg : null, roh: tidy(w.r), bericht: tidy(b.bericht), vorlaeufig: !!b.vorlaeufig };
+  }
+  const listeMessungen = werte => { const m = new Map(); for (const x of werte) m.set(x.probe + '\u0000' + x.p + '\u0000' + x.u, x); return [...m.values()]; };
+
+  /** Prüfberichte eines Projekts zusammenführen.
+      berichte: [{ datei, geaendert (ms), bericht, vorlaeufig, auftragsreferenz, proben: [{ labNr, ref, desc, art, datum, werte: [{ p, r, u, loq }] }] }]
+      projektNr: „26.0142“ (aus dem Ordnernamen) – ohne Nummer keine Prüfung der Auftragsreferenz.
+      → { werte: geltende Messwerte (Map key → Messung), konflikte: [{ berichte, proben, n }], fremd: [{ bericht, nr, ref, n }], ersetzt: [Berichtsnummern] } */
+  function projektAuswerten(berichte, projektNr){
+    const mitWerten = b => (b.proben || []).some(pr => (pr.werte || []).length), nachCode = new Map();
+    for (const b of berichte || []){
+      const k = tidy(b.bericht) ? 'b:' + kurz(b.bericht) : 'd:' + b.datei, alt = nachCode.get(k);
+      if (!alt){ nachCode.set(k, b); continue; }
+      const neuGilt = mitWerten(b) !== mitWerten(alt) ? mitWerten(b) : !b.vorlaeufig !== !alt.vorlaeufig ? !b.vorlaeufig : (b.geaendert || 0) >= (alt.geaendert || 0);
+      if (neuGilt) nachCode.set(k, b);
+    }
+    const liste = [...nachCode.values()].map(b => ({ b, ...(tidy(b.bericht) ? berichtsFassung(b.bericht) : { grund: '?' + b.datei, fassung: null }) }));
+    const fremd = [];
+    for (const x of liste){ const nr = projektnummer(x.b.auftragsreferenz); if (projektNr && nr && nr !== projektNr){ x.fremd = nr;
+      fremd.push({ bericht: tidy(x.b.bericht) || x.b.datei, nr, ref: tidy(x.b.auftragsreferenz), n: (x.b.proben || []).reduce((s, pr) => s + (pr.werte || []).length, 0) }); } }
+    const besser = (a, b) => (a.b.vorlaeufig ? 0 : 1) - (b.b.vorlaeufig ? 0 : 1) || (a.fassung ?? -1) - (b.fassung ?? -1) || (a.b.geaendert || 0) - (b.b.geaendert || 0);
+    const kandidaten = new Map();
+    for (const x of liste) if (!x.fremd) for (const pr of x.b.proben || []) for (const w of pr.werte || []){
+      const k = wertKey(pr, w), l = kandidaten.get(k) || []; l.push({ x, pr, w }); kandidaten.set(k, l); }
+    // werte: je Messung (Schlüssel + vereinheitlichte Einheit) – vom geltenden Bericht bleiben alle Einheiten eines Parameters (ab 1.3.1)
+    const werte = new Map(), konfliktMap = new Map(), gilt = new Set(), mk = (k, c) => k + '\u0000' + einheit(c.w.u);
+    for (const [k, l] of kandidaten){
+      const jeGrund = new Map();
+      for (const c of l){ const g = (c.x.fassung === null ? 'ohne:' : 'mit:') + c.x.grund, alt = jeGrund.get(g); if (!alt || besser(c.x, alt.x) > 0) jeGrund.set(g, c); }
+      const g = [...jeGrund.values()];
+      if (g.length === 1){ const x = g[0].x; for (const c of l) if (c.x === x && !werte.has(mk(k, c))) werte.set(mk(k, c), messung(c.x.b, c.pr, c.w, k)); gilt.add(x); continue; }
+      const codes = g.map(c => tidy(c.x.b.bericht) || c.x.b.datei).sort((a, b) => a.localeCompare(b, 'de', { numeric: true })), id = codes.join('\u0000');
+      const e = konfliktMap.get(id) || { berichte: codes, proben: [], n: 0, werte: [] }; const pk = k.split('\u0000')[0];
+      // alle Werte der beteiligten Berichte zählen als nicht mitgezählt – auch mehrere Einheiten eines Berichts (Codex, PR #81)
+      const alle = l.filter(c => g.some(r => r.x === c.x));
+      if (!e.proben.includes(pk)) e.proben.push(pk); e.n += alle.length; e.werte.push(...alle.map(c => messung(c.x.b, c.pr, c.w, k))); konfliktMap.set(id, e);
+    }
+    const konflikte = [...konfliktMap.values()].map(k => ({ ...k, proben: k.proben.map(p => /^p\d+$/i.test(p) ? p.toUpperCase() : p).sort((a, b) => a.localeCompare(b, 'de', { numeric: true })) }));
+    const ersetzt = liste.filter(x => !x.fremd && mitWerten(x.b) && !gilt.has(x) && !konflikte.some(k => k.berichte.includes(tidy(x.b.bericht) || x.b.datei))).map(x => tidy(x.b.bericht) || x.b.datei);
+    return { werte, konflikte, fremd, ersetzt };
+  }
+  /** Geltende Messwerte (vorläufige ohne endgültigen bleiben, gekennzeichnet). Zwei Berichte für dieselbe Probe und Berichte eines
+      anderen Projekts zählen nicht (siehe projektAuswerten). */
+  const projektMessungen = (berichte, projektNr) => listeMessungen(projektAuswerten(berichte, projektNr).werte.values());
+
+  /** Werte aus ResultKits „_Ergebnisse.json“ (berichte[].proben[].werte) als Map key → Messung. pdf: Bericht ohne XML (nur aus der PDF gelesen). */
+  function ergebnisWerte(datei, projektNr){
+    const m = new Map();
+    for (const b of Array.isArray(datei && datei.berichte) ? datei.berichte : []) if (!(projektNr && projektnummer(b && b.auftragsreferenz) && projektnummer(b.auftragsreferenz) !== projektNr)) for (const pr of Array.isArray(b && b.proben) ? b.proben : [])
+      for (const w of Array.isArray(pr && pr.werte) ? pr.werte : []){ if (!w || !tidy(w.p) || !tidy(w.r)) continue;
+        const k = wertKey(pr, w), x = { ...messung(b, pr, w, k), pdf: !(b.sources && b.sources.xml), pdfName: (b.sources && b.sources.pdf) || '' }, alt = m.get(k);
+        // ab 1.3.1 (o41): mehrere Werte je Schlüssel (Übernahme vor ResultKit 2.5 mit -01 neben -02 in anderer Einheit, oder ein
+        // Bericht mit „µg/Probe“ und „µg/cm²“) – alle behalten (alle[]), damit ein abweichender Wert genannt wird
+        if (alt) (alt.alle || (alt.alle = [alt])).push(x); else m.set(k, x); }
+    return m;
+  }
+  /** Zusammenführen mit der ResultKit-Übernahme (ab 1.3, Audit o1, Entscheidung Basti 11.11.2026).
+      eigen = projektAuswerten(…); datei = gelesene _Ergebnisse.json oder null; aktuell = ihr Dateistand passt zum Ordner;
+      pdfDa(name) = liegt diese PDF (Dateiname aus der Datei) noch in „Laborergebnisse“? projektNr: Werte eines Berichts, dessen
+      Auftragsreferenz ein anderes Projekt nennt, zählen auch aus der Datei nie (Übernahme vor ResultKit 2.2).
+      • Gleicher Schlüssel, anderer Wert → es zählt der Wert aus den Prüfberichten; der Unterschied wird genannt.
+      • Nur in der Datei: zählt, wenn die Übernahme aktuell ist – oder der Wert aus einer PDF kam, die noch im Ordner liegt.
+      • Nur in den Prüfberichten bei aktueller Übernahme: ResultKit hat ihn nicht übernommen (z. B. Probe in LabelKit storniert,
+        XML in einem Unterordner) → zählt nicht, wird mitgezählt unter „nicht mitgezählt“.
+      → { messungen, unterschiede: [{ probe, p, u, eigen: {roh, bericht, u}, resultkit: {roh, bericht, u} }], nichtUebernommen: [Messung], quelle } */
+  function mitErgebnisDatei(eigen, datei, aktuell, pdfDa, projektNr){
+    const werte = [...eigen.werte.values()];
+    if (!datei) return { messungen: listeMessungen(werte), unterschiede: [], nichtUebernommen: [], quelle: 'pruefberichte' };
+    const rk = ergebnisWerte(datei, projektNr), out = [], unterschiede = [], nichtUebernommen = [], strittig = new Set();
+    for (const k of eigen.konflikte.flatMap(x => x.werte.map(w => w.key))) strittig.add(k);
+    // je Schlüssel (Probe + Parameter, ohne Einheit – ab 1.3.1, o41) auf beiden Seiten alle Werte vergleichen
+    const eigenJe = new Map(); for (const x of werte) eigenJe.set(x.key, [...(eigenJe.get(x.key) || []), x]);
+    const gleich = (a, b) => a.roh === b.roh && a.u === b.u && a.vorlaeufig === b.vorlaeufig;
+    for (const [k, xs] of eigenJe){
+      const r = rk.get(k);
+      if (!r){ if (aktuell) nichtUebernommen.push(...xs); else out.push(...xs); continue; }
+      // Gleicher Wert aus einer anderen Fassung ändert nichts (kein Hinweis). Ab 1.3.1 zählen auch Einheit (vereinheitlicht) und jeder
+      // Wert der Datei zu diesem Schlüssel (o41): eine alte Übernahme mit „-01“ neben „-02“ wird genannt.
+      const rs = r.alle || [r], fehlt = xs.find(x => !rs.some(y => gleich(x, y))), extra = rs.find(y => !xs.some(x => gleich(x, y)));
+      if (fehlt || extra){ const x = fehlt || xs.find(x => x.u === extra.u) || xs[0], y = extra || rs.find(y => y.u === x.u) || rs[0];
+        unterschiede.push({ probe: x.label || x.ref || x.probe, p: x.p, u: x.u, eigen: { roh: x.roh, bericht: x.bericht, u: x.u }, resultkit: { roh: y.roh, bericht: y.bericht, u: y.u } }); }
+      out.push(...xs);
+    }
+    for (const [k, r] of rk){ if (eigenJe.has(k) || strittig.has(k)) continue;
+      for (const y of r.alle || [r]) if (aktuell || (y.pdf && y.pdfName && pdfDa && pdfDa(y.pdfName))) out.push(y); }
+    return { messungen: listeMessungen(out), unterschiede, nichtUebernommen, quelle: aktuell ? 'resultkit' : 'pruefberichte' };
+  }
+  /** Für die Statistik nutzbar: endgültig und gemessen oder unter BG / n. n. */
+  const zaehlt = x => !x.vorlaeufig && (x.q === 'gemessen' || x.q === 'unter' || x.q === 'nn');
+  const unterBG = x => x.q === 'unter' || x.q === 'nn';
+
+  /** Rangstatistik mit Werten unter BG als kleinste Werte. Quantil nach dem Rangverfahren (nearest rank);
+      fällt es auf einen Wert unter BG, lautet das Ergebnis „unter BG“ statt einer erfundenen Zahl. */
+  function statistik(liste){
+    const xs = liste.filter(zaehlt), n = xs.length, gem = xs.filter(x => x.q === 'gemessen').map(x => x.v).sort((a, b) => a - b), nu = n - gem.length;
+    const quantil = p => { if (!n) return null; const i = Math.max(0, Math.ceil(p * n) - 1); return i < nu ? { unter: true } : { wert: gem[i - nu] }; };
+    return { n, gemessen: gem.length, unter: nu, genug: n >= MIN_N, median: n >= MIN_N ? quantil(0.5) : null, p90: n >= MIN_N ? quantil(0.9) : null,
+      min: gem.length ? gem[0] : null, max: gem.length ? gem[gem.length - 1] : null };
+  }
+  /** Gruppenschlüssel Parameter|Einheit und Anzahl nutzbarer Werte, häufigste zuerst. */
+  function parameterListe(messungen){
+    const z = new Map();
+    for (const x of messungen) if (zaehlt(x)){ const k = x.p + '|' + x.u; z.set(k, (z.get(k) || 0) + 1); }
+    return [...z].map(([k, n]) => ({ key: k, p: k.slice(0, k.lastIndexOf('|')), u: k.slice(k.lastIndexOf('|') + 1), n })).sort((a, b) => b.n - a.n || a.key.localeCompare(b.key, 'de'));
+  }
+
+  /** PAK-Muster je Probe: Anteil jedes Einzel-PAK an der Summe der gemessenen Einzel-PAK (dimensionslos, je Einheit getrennt).
+      anteile[i]: Zahl (Anteil), 0 mit unter[i] = true (unter BG), undefined (nicht bestimmt). k = Anzahl gemessener Einzel-PAK. */
+  function profile(messungen){
+    const proben = new Map();
+    for (const x of messungen){
+      if (!zaehlt(x)) continue; const i = pakIndex(x.p); if (i < 0) continue;
+      const k = x.probe + '|' + x.u; if (!proben.has(k)) proben.set(k, { probe: x.probe, ref: x.ref, desc: x.desc, art: x.art, datum: x.datum, u: x.u, werte: new Array(16).fill(undefined), unter: new Array(16).fill(false) });
+      const pr = proben.get(k); if (x.q === 'gemessen'){ pr.werte[i] = x.v; pr.unter[i] = false; } else if (pr.werte[i] === undefined){ pr.werte[i] = 0; pr.unter[i] = true; }
+    }
+    const out = [];
+    for (const pr of proben.values()){
+      const k = pr.werte.filter((v, i) => v !== undefined && !pr.unter[i]).length, summe = pr.werte.reduce((s, v, i) => s + (v !== undefined && !pr.unter[i] ? v : 0), 0);
+      if (!k || !(summe > 0)) continue;
+      out.push({ ...pr, k, summe, anteile: pr.werte.map((v, i) => v === undefined ? undefined : pr.unter[i] ? 0 : v / summe),
+        quotienten: QUOTIENTEN.map(([, a, b]) => !pr.unter[a] && !pr.unter[b] && pr.werte[a] !== undefined && pr.werte[b] !== undefined && pr.werte[a] + pr.werte[b] > 0 ? pr.werte[a] / (pr.werte[a] + pr.werte[b]) : null) });
+    }
+    return out;
+  }
+  /** Mittleres Muster einer Vergleichsgruppe: Median der Anteile je Einzel-PAK (unter BG = 0, nicht bestimmt = ausgelassen). */
+  function medianProfil(liste){
+    if (liste.length < MIN_N) return null;
+    return PAK16.map((_, i) => { const xs = liste.map(p => p.anteile[i]).filter(v => v !== undefined).sort((a, b) => a - b); if (xs.length < MIN_N) return undefined;
+      const h = xs.length >> 1; return xs.length % 2 ? xs[h] : (xs[h - 1] + xs[h]) / 2; });
+  }
+
+  /* ---------- Rolle einer Probe (Konvention, nachträglich änderbar) ----------
+     Gelesen aus Probenbezeichnung und Probenbeschreibung. Reihenfolge: Freimessung vor Referenz vor Verdachtsquelle vor Brandbereich.
+     Konvention des Handbuchs: „F-“ vor der alten ID = Freimessung, „REF“ = Referenz aus unbelasteter Stelle. Nichts erkannt → keine Rolle. */
+  const ROLLEN = [['brand', 'Brandbereich'], ['betroffen', 'betroffener Bereich'], ['referenz', 'Referenz (unbelastet)'], ['quelle', 'Verdachtsquelle (z. B. Kleber)'], ['frei', 'Freimessung nach Sanierung']];
+  const ROLLE_NAME = Object.fromEntries(ROLLEN);
+  const istFrei = id => /^F[-_ ]/i.test(tidy(id));
+  function rolleAuto(ref, desc){
+    const t = (tidy(ref) + ' | ' + tidy(desc)).toLocaleLowerCase('de');
+    if (istFrei(ref) || istFrei(desc) || /freimessung|sanierungskontrolle|nach (der )?sanierung/.test(t)) return 'frei';
+    if (/(^|[^a-zäöüß])ref([^a-zäöüß]|$)|referenz|unbelastet|nullprobe|hintergrund/.test(t)) return 'referenz';
+    if (/kleber|teer|bitumen|dachpappe|schwarzanstrich/.test(t)) return 'quelle';
+    if (/brandraum|brandbereich|brandherd|brandstelle|brandausbruch/.test(t)) return 'brand';
+    return '';
+  }
+  /** Zur Freimessung „F-EG-WZ-B-7-T1“ gehört „EG-WZ-B-7-T1“: ID ohne das F-Präfix (gleich verglichen, ohne Groß/klein). */
+  const freiBasis = id => istFrei(id) ? norm(tidy(id).replace(/^F[-_ ]/i, '')) : '';
+
+  /** Kalendertag in Berlin aus einem Zeitstempel des Labors (2026-10-07T22:00:00Z → 2026-10-08) oder JJJJ-MM-TT. */
+  function berlinTag(wert){
+    const v = tidy(wert); if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const d = new Date(v); if (!/^\d{4}-\d{2}-\d{2}T/.test(v) || !Number.isFinite(d.getTime())) return '';
+    const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d), g = k => t.find(x => x.type === k).value;
+    return `${g('year')}-${g('month')}-${g('day')}`;
+  }
+  /** Tage zwischen Schadendatum und Probenahme; null, wenn eines fehlt oder die Probe vor dem Schaden liegt. */
+  function tageNachBrand(schaden, probe){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(schaden || '') || !/^\d{4}-\d{2}-\d{2}$/.test(probe || '')) return null;
+    const t = Math.round((Date.parse(probe + 'T12:00:00Z') - Date.parse(schaden + 'T12:00:00Z')) / 864e5);
+    return t >= 0 ? t : null;
+  }
+  /* Nur zum Gruppieren in der Anzeige, keine Bewertung. */
+  const TAGE_KLASSEN = [[7, '0–7 Tage'], [30, '8–30 Tage'], [90, '31–90 Tage'], [Infinity, 'über 90 Tage']];
+  const tageKlasse = t => t == null ? 'Datum unbekannt' : TAGE_KLASSEN.find(([g]) => t <= g)[1];
+
+  /** Einzel-PAK, die in allen Proben über BG gemessen sind (Indizes 0–15). */
+  const gemeinsam = profile => PAK16.map((_, i) => i).filter(i => profile.length && profile.every(p => p.werte[i] !== undefined && !p.unter[i] && p.werte[i] > 0));
+  /** Anteile einer Probe, normiert nur über die gemeinsame Stoffmenge; null, wenn ein Stoff der Menge fehlt oder unter BG ist. */
+  function aufMenge(p, menge){
+    if (!menge.length || menge.some(i => p.werte[i] === undefined || p.unter[i] || !(p.werte[i] > 0))) return null;
+    const s = menge.reduce((a, i) => a + p.werte[i], 0); return menge.map(i => p.werte[i] / s);
+  }
+  /** Kosinus-Ähnlichkeit zweier Anteilsvektoren (1 = gleiches Muster). Stützt nur – ein deutlicher Unterschied sagt mehr als hohe Ähnlichkeit. */
+  function kosinus(a, b){ let ab = 0, aa = 0, bb = 0; for (let i = 0; i < a.length; i++){ ab += a[i] * b[i]; aa += a[i] * a[i]; bb += b[i] * b[i]; } return aa && bb ? ab / Math.sqrt(aa * bb) : null; }
+  /** Median je Stelle über mehrere Vektoren gleicher Länge (ab MIN_N Vektoren). */
+  function medianVektor(vs){
+    if (vs.length < MIN_N) return null;
+    return vs[0].map((_, i) => { const xs = vs.map(v => v[i]).sort((a, b) => a - b), h = xs.length >> 1; return xs.length % 2 ? xs[h] : (xs[h - 1] + xs[h]) / 2; });
+  }
+
+
+  /** Dateistand wie ResultKit (standKennung): „Name|Größe|Zeit“ je Datei, nach Namen sortiert. */
+  const standKennung = dateien => [...dateien].sort((a, b) => a.name.localeCompare(b.name)).map(d => `${d.name}|${d.size}|${d.t}`).join('\n');
+  /** Rollenwahl aus BerichtKits „_BerichtKit.json“ (form.brand.rolle[Label] = { auto, wahl }, Audit M4/o6) – nur gültige Einträge. */
+  function berichtkitRollen(o){
+    if (!o || !o.form || !o.form.brand || typeof o.form.brand !== 'object') return null;   // kein Brandbericht: BerichtKit nimmt keine Rollen an
+    const r = typeof o.form.brand.rolle === 'object' && o.form.brand.rolle ? o.form.brand.rolle : {}, out = {};
+    for (const [k, v] of Object.entries(r)) if (/^P\d+$/.test(k) && v && ['frei', 'referenz'].includes(v.auto) && ['ok', 'keine'].includes(v.wahl)) out[k] = { auto: v.auto, wahl: v.wahl };
+    return out;
+  }
+  /** Rolle einer Probe im Datenarchiv (ab 1.3): eigene Korrektur hier → „Normale Probe“ aus BerichtKit (nur solange die Regel dieselbe
+      Rolle annimmt wie damals in BerichtKit) → Konvention aus dem Namen. → { rolle, auto, bk: 'keine'|'ok'|'', korrektur } */
+  function rolleWirksam(x, korrektur, bkRollen){
+    const auto = rolleAuto(x.ref, x.desc), w = bkRollen && bkRollen[probeLabel(x.ref)], bk = w && w.auto === auto ? w.wahl : '';
+    if (korrektur) return { rolle: korrektur === 'keine' ? '' : korrektur, auto, bk, korrektur };
+    return { rolle: bk === 'keine' ? '' : auto, auto, bk, korrektur: '' };
+  }
+  /** Sicht von BerichtKit (Brandbericht) auf eine Probe: nur Freimessung, Referenz oder normal. */
+  const bkSicht = rolle => rolle === 'frei' || rolle === 'referenz' ? rolle : 'normal';
+
+  /** Semikolon-CSV mit Dezimalkomma für Excel. Keine Ortsangaben, keine Probenbeschreibung – nur Projektnummer. */
+  function csv(zeilen){
+    const zelle = v => { const s = v == null ? '' : typeof v === 'number' ? String(v).replace('.', ',') : String(v); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const kopf = ['Projekt', 'Jahr', 'Nutzung', 'Brandgut', 'Probe', 'Rolle', 'Tage nach Brand', 'Matrix', 'Parameter', 'Einheit', 'Ergebnis', 'Wert', 'unter BG', 'BG', 'Prüfbericht', 'vorläufig'];
+    const q = { gemessen: 'gemessen', unter: '< BG', nn: 'n. n.', nb: 'n. b.', unklar: 'unklar' };
+    return '﻿' + [kopf, ...zeilen.map(x => [x.nr, x.jahr, x.nutzung, x.brandgut, x.probe, x.rolle ? ROLLE_NAME[x.rolle] : '', x.tage, x.art, x.p, x.u, x.roh, x.v, unterBG(x) ? q[x.q] : '', x.bg, x.bericht, x.vorlaeufig ? 'ja' : ''])]
+      .map(r => r.map(zelle).join(';')).join('\r\n') + '\r\n';
+  }
+
+  const api = Object.freeze({ zahl, ergebnis, einheit, PAK16, pakIndex, QUOTIENTEN, QUELLE, MIN_N, projektKopf, projektMessungen, projektAuswerten, ergebnisWerte, mitErgebnisDatei, berichtsFassung, probeLabel, zaehlt, unterBG, statistik, parameterListe, profile, medianProfil, csv, norm, tidy,
+    ROLLEN, ROLLE_NAME, rolleAuto, rolleWirksam, bkSicht, berichtkitRollen, standKennung, freiBasis, berlinTag, tageNachBrand, tageKlasse, gemeinsam, aufMenge, kosinus, medianVektor });
+  root.ArchivAuswertung = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script id="word-luecken">
+/* Spektron – offene Lücken in einer Word-Datei (.docx) finden. Nur lesen, keine Bibliothek: Entpacken mit dem im
+   Browser (Edge/Chrome) und in Node eingebauten DecompressionStream('deflate-raw').
+   Als Lücke zählt
+     · gelb hervorgehobener Text (Texthervorhebung „Gelb“ – so markiert BerichtKit fehlende Angaben) und
+     · eine Lückenmarke in eckigen Klammern, die mit einem Großbuchstaben beginnt: „[KI-Wert]“, „[Versicherer]“,
+       „[Foto fehlt: …]“. Einheiten und Verweise wie „[mg/kg]“, „[µg/cm²]“ oder „[1]“ zählen nicht.
+   Gelesen werden Haupttext, Kopf- und Fußzeilen, Fuß- und Endnoten. Gelöschter Text (Änderungen nachverfolgen) zählt nicht.
+   Wer eine Lücke in Word ausfüllt und die gelbe Markierung stehen lässt, bekommt sie weiter gemeldet – darum fragt die
+   Projektzentrale nur nach und sperrt nicht. */
+(function(root){
+  'use strict';
+  const TEILE = /^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/;
+  const MARKE = /\[([A-ZÄÖÜ][^\[\]\n]{0,78})\]/g;
+  const MAX_TEXT = 60;
+
+  const u16 = (b, i) => b[i] | (b[i + 1] << 8);
+  const u32 = (b, i) => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
+
+  async function inflate(daten){
+    if (typeof DecompressionStream === 'undefined') throw new Error('Dieser Browser kann Word-Dateien nicht entpacken');
+    const strom = new Blob([daten]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(strom).arrayBuffer());
+  }
+
+  /** Die Textteile einer .docx (ZIP) entpacken: { 'word/document.xml': '<…>', … }. Liest über das Zentralverzeichnis
+      (Größen stehen dort auch, wenn der lokale Kopf sie nicht hat). */
+  async function textteile(bytes){
+    const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let ende = -1;
+    for (let i = b.length - 22; i >= 0 && i >= b.length - 22 - 0xffff; i--) if (u32(b, i) === 0x06054b50){ ende = i; break; }
+    if (ende < 0) throw new Error('keine Word-Datei (.docx) – ZIP-Verzeichnis fehlt');
+    const anzahl = u16(b, ende + 10), start = u32(b, ende + 16);
+    if (anzahl === 0xffff || start === 0xffffffff) throw new Error('ZIP64 wird nicht unterstützt');
+    const dec = new TextDecoder(), teile = {};
+    let p = start;
+    for (let n = 0; n < anzahl; n++){
+      if (p + 46 > b.length || u32(b, p) !== 0x02014b50) throw new Error('ZIP-Verzeichnis beschädigt');
+      const flags = u16(b, p + 8), methode = u16(b, p + 10), groesse = u32(b, p + 20);
+      const nl = u16(b, p + 28), el = u16(b, p + 30), kl = u16(b, p + 32), lokal = u32(b, p + 42);
+      const name = dec.decode(b.subarray(p + 46, p + 46 + nl));
+      p += 46 + nl + el + kl;
+      if (!TEILE.test(name)) continue;
+      if (flags & 1) throw new Error('Word-Datei ist verschlüsselt');
+      if (lokal + 30 > b.length || u32(b, lokal) !== 0x04034b50) throw new Error('ZIP-Eintrag beschädigt: ' + name);
+      const von = lokal + 30 + u16(b, lokal + 26) + u16(b, lokal + 28), roh = b.subarray(von, von + groesse);
+      if (roh.length !== groesse) throw new Error('Word-Datei unvollständig');
+      const daten = methode === 0 ? roh : methode === 8 ? await inflate(roh) : null;
+      if (!daten) throw new Error('unbekannte Kompression in ' + name);
+      teile[name] = dec.decode(daten);
+    }
+    if (!teile['word/document.xml']) throw new Error('keine Word-Datei (.docx) – Haupttext fehlt');
+    return teile;
+  }
+
+  const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  const entschluesseln = s => s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) =>
+    e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : +e.slice(1)) : ENT[e.toLowerCase()]);
+  const kuerzen = s => s.length > MAX_TEXT ? s.slice(0, MAX_TEXT - 1).trimEnd() + '…' : s;
+
+  /** Lücken in einem XML-Teil. Läuft einmal über die Tags: Absätze und Textläufe (auch verschachtelt, z. B. Textfelder),
+      Hervorhebung gilt für den Lauf, in dessen Eigenschaften sie steht. Nebeneinanderliegende gelbe Läufe eines Absatzes
+      sind eine Lücke (Word teilt Text oft in mehrere Läufe). */
+  function inXml(xml){
+    const funde = [];
+    const absaetze = [], laeufe = [];
+    const TAG = /<w:p(?=[\s>\/])[^>]*?(\/)?>|<\/w:p>|<w:r(?=[\s>\/])[^>]*?(\/)?>|<\/w:r>|<w:highlight\b[^>]*\bw:val="([^"]*)"[^>]*>|<w:t(?=[\s>])[^>]*>([^<]*)<\/w:t>|<w:(?:tab|br|cr)\b[^>]*\/>/g;
+    const gelbAbschliessen = a => { const t = a.gelb.replace(/\s+/g, ' ').trim(); if (t) a.gelbe.push(t); a.gelb = ''; };
+    let m;
+    while ((m = TAG.exec(xml))){
+      const tag = m[0];
+      if (tag.startsWith('<w:p') && !tag.startsWith('<w:pPr')){ if (!m[1]) absaetze.push({ text: '', gelb: '', gelbe: [] }); continue; }
+      if (tag === '</w:p>'){
+        const a = absaetze.pop(); if (!a) continue;
+        gelbAbschliessen(a);
+        funde.push(...a.gelbe);
+        for (const k of a.text.matchAll(MARKE)){ const t = k[0].replace(/\s+/g, ' '); if (!a.gelbe.some(g => g.includes(t))) funde.push(t); }   // gelbe Marke nur einmal
+        continue;
+      }
+      if (tag.startsWith('<w:r') && !tag.startsWith('<w:rPr')){ if (!m[2]) laeufe.push({ gelb: false }); continue; }
+      if (tag === '</w:r>'){ laeufe.pop(); continue; }
+      if (tag.startsWith('<w:highlight')){ if (laeufe.length) laeufe[laeufe.length - 1].gelb = m[3] === 'yellow'; continue; }   // im Absatz-Kopf (Absatzmarke) ohne Lauf: kein Text
+      const a = absaetze[absaetze.length - 1]; if (!a) continue;
+      const text = m[4] !== undefined ? entschluesseln(m[4]) : ' ';
+      a.text += text;
+      const lauf = laeufe[laeufe.length - 1];
+      if (lauf && lauf.gelb) a.gelb += text;
+      else if (m[4] !== undefined && text.trim()) gelbAbschliessen(a);   // ungefärbter Text trennt zwei gelbe Stellen
+    }
+    return funde;
+  }
+
+  /** Lücken in einer .docx: { luecken: [{ text, anzahl }] } – je Text einmal, in der Reihenfolge des ersten Vorkommens
+      (Haupttext zuerst, dann Kopf-/Fußzeilen, Noten). */
+  async function pruefen(bytes){
+    const teile = await textteile(bytes);
+    const reihe = Object.keys(teile).sort((a, b) => (a !== 'word/document.xml') - (b !== 'word/document.xml') || a.localeCompare(b, 'en', { numeric: true }));
+    const zaehler = new Map();
+    for (const n of reihe) for (const t of inXml(teile[n])){ const k = kuerzen(t); zaehler.set(k, (zaehler.get(k) || 0) + 1); }
+    return { luecken: [...zaehler].map(([text, anzahl]) => ({ text, anzahl })) };
+  }
+
+  const api = Object.freeze({ pruefen, textteile, inXml });
+  root.WordLuecken = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script id="lektor-regeln">
+/* LEKTOR-REGELN – Kopien bestehender Regeln anderer Apps, nichts Neues. Jede Kopie hat eine Gegenprobe in tests/lektorkit-check.cjs (A).
+   Ändert sich das Original, hier nachziehen (wörtliche Kopien: node tools/einbetten.cjs ../projektzentrale). */
+(function(root){
+'use strict';
+const A = root.ArchivAuswertung, MAX_XML = 10 * 1024 * 1024;
+/* XMLLESEN-KOPIE */
+  function xmlLesen(text){
+    if (text.length > MAX_XML || /<!DOCTYPE|<!ENTITY/i.test(text)) return null;
+    const doc = new DOMParser().parseFromString(text, 'application/xml'), r = doc.documentElement;
+    if (doc.getElementsByTagNameNS('*', 'parsererror').length || r.localName !== 'AnalyticalReport') return null;
+    const kinder = (el, n) => [...el.children].filter(e => e.localName === n), kind = (el, n) => kinder(el, n)[0], wert = (el, n) => (kind(el, n)?.textContent || '').trim();
+    const out = { bericht: (r.getAttribute('AnalyticalReportCode') || '').trim(), vorlaeufig: r.getAttribute('IsPreliminaryReport') === 'true', auftragsreferenz: '', proben: [] };
+    const batches = kind(r, 'Batches');
+    for (const b of batches ? kinder(batches, 'Batch') : []){
+      out.auftragsreferenz ||= wert(b, 'ClientPurchaseOrderReference');   // wie ResultKit: erste Auftragsreferenz
+      const s = kind(b, 'Samples');
+      for (const sp of s ? kinder(s, 'SamplePartner') : []){
+        const extra = n => { const el = kinder(sp, 'AdditionalFields').find(e => e.getAttribute('Name') === n); return el ? wert(el, 'Value') : ''; };
+        const lines = kind(sp, 'Lines');
+        out.proben.push({ labNr: wert(sp, 'SamplePartnerCode'), ref: wert(sp, 'Description'), desc: extra('SPLPT_NAME'), art: extra('SAMPLETYPE') || wert(sp, 'Matrix'), datum: A.berlinTag(wert(sp, 'SamplingDate')),
+          werte: (lines ? kinder(lines, 'AnalyticalReportLine') : []).map(l => ({ p: wert(l, 'ParameterName') || wert(l, 'ParameterDescription'), r: wert(l, 'Result'), u: wert(l, 'Unit'), loq: wert(l, 'LOQ') })).filter(w => w.p && w.r) });
+      }
+    }
+    return out;
+  }
+/* XMLLESEN-KOPIE-ENDE */
+/* ResultKit src/ergebnisse.ts (2.2): Probenbeschreibung vergleichbar machen – angeglichen werden nur Leerraum, Groß-/Kleinschreibung,
+   Striche, Anführungszeichen und Leerraum um die Kommas. */
+const tidyRK = s => String(s ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
+const beschreibungKey = s => tidyRK(s).toLowerCase().replace(/[‐-―−]/g, '-').replace(/[„“”‚‘’«»"']/g, '"')
+  .split(',').map(t => t.trim()).filter(Boolean).join(', ');
+/* BerichtKit bericht-gemeinsam.js: Raumkürzel, die BerichtKit in der Entnahmestelle ausschreibt („WZ“ → „Wohnzimmer“). */
+const s = v => (v == null ? '' : String(v)).trim();
+const RAUM_KUERZEL = { SZ: 'Schlafzimmer', WZ: 'Wohnzimmer', KiZ: 'Kinderzimmer', GZ: 'Gästezimmer',
+  HWR: 'Hauswirtschaftsraum', TRH: 'Treppenhaus' };
+const RAUM_RE = new RegExp(`(?<![\\p{L}\\p{N}])(${Object.keys(RAUM_KUERZEL).join('|')})(?![\\p{L}\\p{N}])`, 'gu');
+function raumAusschreiben(v) {
+  const ersetzt = [];
+  const text = s(v).replace(RAUM_RE, k => { ersetzt.push(k); return RAUM_KUERZEL[k]; });
+  return { text, ersetzt };
+}
+/* ResultKit src/bewertung.ts KORROSION-CHLORID v2: Chlorid je µg/cm² (1 µg/cm² = 10 mg/m²) – die einzige Umrechnung für Chlorid. */
+const CHLORID_JE_UG_CM2 = {'µg/cm2':1,'mg/m2':10,'µg/m2':10000,'mg/cm2':.001,'µg/100cm2':100,'mg/dm2':.1};
+const chloridEinheit = unit => CHLORID_JE_UG_CM2[unit.replace(/μ/g,'µ').replace(/²/g,'2').replace(/\s+/g,'').toLowerCase()];
+/* ResultKit src/bewertung.ts vdsScale: Σ16 EPA-PAK je µg/m² – die einzige Umrechnung für PAK. */
+const PAK_JE_UG_M2 = {'µg/m2':1,'µg/100cm2':.01,'mg/m2':.001,'ng/m2':1000};
+const pakEinheit = unit => PAK_JE_UG_M2[unit.replace(/μ/g,'µ').replace(/²/g,'2').replace(/\s+/g,'').toLowerCase()];
+/* ResultKit src/uebersicht.ts: Hauptwert PAK = Σ16 EPA-PAK, Chlorid am Anfang verankert; Wert je Fläche geht vor „je Probe“. */
+const SUMME=/^(?:Summe|Σ)\s*16\s*EPA[-– ]?PAK/i,CHLORID=/^\s*Chlorid\b/i;
+const FLAECHE=/\/\s*(?:\d+\s*)?(?:c|d)?m\s*(?:2|²)\s*$/i;
+/* ResultKit src/labelkit.ts: Probennummer einer LabelKit-Probe (_nr, chloridNr, id). LabelKit nummeriert PAK → Chlorid → Asbest → Sonstige fortlaufend. */
+function number(p){for(const v of [p._nr,p.chloridNr,p.id]){const n=Number(v);if(Number.isSafeInteger(n)&&n>0&&n<1e9)return n;}return 0;}
+const api = Object.freeze({ xmlLesen, beschreibungKey, RAUM_KUERZEL, raumAusschreiben, CHLORID_JE_UG_CM2, chloridEinheit, PAK_JE_UG_M2, pakEinheit, SUMME, CHLORID, FLAECHE, number });
+root.LektorRegeln = api;
+if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="lektor-kern">
+/* LEKTOR-KERN – Bericht lesen und jede Angabe gegen die Projektdaten halten. Keine Dateizugriffe, keine Oberfläche.
+   Grundsätze (Plan „gegenleser-plan.md“, Entscheidungen Basti 13.11.2026):
+   • Nichts raten: Lässt sich eine Zahl nicht sicher genau einer Probe und einem Parameter zuordnen, ist sie „ohne Beleg“.
+   • „ohne Beleg“ ist nie ein Fehler und zählt nie als Problem.
+   • Gleich ist nur, was die bestehenden Regeln gleich nennen (Datenarchiv/ResultKit: Zahl streng gelesen, „< BG“, Einheit nur in der
+     Schreibweise angeglichen). Umgerechnet wird nur Chlorid (1 µg/cm² = 10 mg/m²) und Σ16 EPA-PAK (Tabelle aus vdsScale). Keine Rundung:
+     Passt die Zahl nur gerundet, ist sie „weicht ab“ – der Befund sagt „gerundet?“, damit „Ist so gewollt“ schnell geht.
+   • Eine überholte Prüfberichtsfassung im Text ist „weicht ab“.
+   • „anderes Projekt“ nur für Projektnummern, Schaden-Nr. und Straße mit Hausnummer anderer Projekte sowie Auftraggeber-/VN-/Versicherernamen
+     ab 10 Zeichen – nie ein Ort allein, nie die Büroadresse, nie etwas, das auch in diesem Projekt steht. */
+(function(root){
+'use strict';
+const A = root.ArchivAuswertung, R = root.LektorRegeln;
+const tidy = A.tidy;
+const VERSION = '1.0.0';
+
+/* ---------- Word lesen ---------- */
+/** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
+    schreibt Labor-Nr. damit) und weiches Trennzeichen wie in Word. Gelöschter Text (Änderungen nachverfolgen), Feldbefehle und
+    Textfelder zählen nicht. Geschütztes Leerzeichen → Leerzeichen (gleiche Länge, Positionen bleiben). */
+function absatzText(p){
+  let t = '';
+  const geh = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue; const ln = c.localName;
+    if (ln === 't') t += c.textContent.replace(/[  ]/g, ' ');
+    else if (ln === 'tab') t += '\t';
+    else if (ln === 'br' || ln === 'cr') t += '\n';
+    else if (ln === 'noBreakHyphen') t += '-';
+    else if (ln === 'softHyphen' || ln === 'pPr' || ln === 'rPr' || ln === 'del' || ln === 'delText' || ln === 'instrText' || ln === 'txbxContent' || ln === 'fldSimple' && false) {}
+    else geh(c); } };
+  geh(p); return t;
+}
+const istUeberschrift = (text, p) => {
+  const t = text.trim();
+  if (p && [...p.getElementsByTagName('*')].some(e => e.localName === 'outlineLvl')) return t.length > 0 && t.length <= 90;
+  return /^\d{1,2}(?:\.\d{1,2})*\.?\s+\p{Lu}/u.test(t) && t.length <= 90 && !/[.:;]$/.test(t) && !/\d\s*(?:µg|mg|ng|%)/.test(t);
+};
+/** XML eines Teils → Blöcke [{ typ:'p', seg, ueb } | { typ:'tab', zeilen:[[seg]] }]; segs bekommen fortlaufende Nummern. */
+function teilBloecke(xml, teil, segs){
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw Error('Word-Datei beschädigt (' + teil + ')');
+  const kinder = (n, name) => [...n.childNodes].filter(c => c.nodeType === 1 && c.localName === name);
+  const neu = (text, art) => { const s = { id: segs.length, text, art, teil }; segs.push(s); return s; };
+  const out = [];
+  const lauf = n => { for (const c of n.childNodes){ if (c.nodeType !== 1) continue;
+    if (c.localName === 'p'){ const text = absatzText(c); out.push({ typ: 'p', seg: neu(text, 'p'), ueb: teil === 'document' && istUeberschrift(text, c) }); }
+    else if (c.localName === 'tbl'){ const zeilen = kinder(c, 'tr').map(tr => kinder(tr, 'tc').map(tc => neu([...tc.getElementsByTagName('*')].filter(e => e.localName === 'p' && e.parentNode === tc || e.localName === 'p' && e.parentNode.localName === 'sdtContent').map(absatzText).join('\n'), 'zelle')));
+      out.push({ typ: 'tab', zeilen }); }
+    else if (c.localName === 'sdt'){ const inh = kinder(c, 'sdtContent')[0]; if (inh) lauf(inh); }
+    else if (c.localName === 'body') lauf(c); } };
+  const wurzel = doc.documentElement;
+  lauf(teil === 'document' ? (kinder(wurzel, 'body')[0] || wurzel) : wurzel);
+  return out;
+}
+/** .docx (Bytes) → { bloecke, segs }. Kopfzeilen kommen einmal je Text vorn hin (Abschnitt „Kopfzeile“). */
+async function docxLesen(bytes){
+  const teile = await root.WordLuecken.textteile(bytes), segs = [], bloecke = [];
+  const kopf = Object.keys(teile).filter(n => /^word\/header\d*\.xml$/.test(n)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  const gesehen = new Set();
+  for (const n of kopf) for (const b of teilBloecke(teile[n], 'kopf', segs)){
+    const key = b.typ === 'p' ? b.seg.text.trim() : JSON.stringify(b.zeilen.map(z => z.map(s => s.text)));
+    if (!key || gesehen.has(key)){ if (b.typ === 'p') b.seg.leer = true; continue; } gesehen.add(key); b.kopf = true; bloecke.push(b); }
+  bloecke.push(...teilBloecke(teile['word/document.xml'], 'document', segs));
+  let abschnitt = '', titel = '';
+  for (const b of bloecke){ if (b.kopf){ b.abschnitt = 'Kopfzeile'; continue; }
+    // nur nummerierte Überschriften wechseln den Abschnitt („## Küche“-Zwischentitel bleiben im Abschnitt davor)
+    if (b.typ === 'p' && b.ueb){ const m = /^(\d{1,2}(?:\.\d{1,2})*)\.?\s+(.*)$/.exec(b.seg.text.trim()); if (m){ abschnitt = m[1]; titel = m[2]; } }
+    b.abschnitt = abschnitt; b.titel = titel; }
+  for (const b of bloecke) for (const s of b.typ === 'p' ? [b.seg] : b.zeilen.flat()){ s.abschnitt = b.abschnitt; s.titel = b.titel || ''; }
+  return { bloecke, segs };
+}
+
+/* ---------- Muster ---------- */
+const EINHEIT = String.raw`[µμ]g\s?\/\s?100\s?cm(?:²|2)|[µμ]g\s?\/\s?cm(?:²|2)|mg\s?\/\s?m(?:²|2)|[µμ]g\s?\/\s?m(?:²|2)|ng\s?\/\s?m(?:²|2)|mg\s?\/\s?kg|M\.?-\s?%|m(?:²|2)(?![\p{L}\d\/])|°C`;
+const ZAHL = String.raw`\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?`;
+const WERT_RE = new RegExp(String.raw`(?<![\p{L}\d.,\-\/])(?:(<|>)\s*)?(${ZAHL})\s?(${EINHEIT})`, 'gu');
+const PRUEF_EINHEIT = /^(?:[µμ]g\/100cm2|[µμ]g\/cm2|mg\/m2|[µμ]g\/m2|ng\/m2|mg\/kg|M\.?-%)$/i;
+const einheitKurz = u => tidy(u).replace(/μ/g, 'µ').replace(/²/g, '2').replace(/\s+/g, '');
+const PROBEN_RE = /(?<![\p{L}\d])(\p{L}*?[Pp]roben?)\s+(\d{1,4}(?:\s*(?:,|und|bis|sowie)\s*\d{1,4})*)(?![\d]|,\d)/gu;
+const P_RE = /(?<![\p{L}\d])P(\d{1,4})(?![\p{L}\d])/gu;
+const PB_RE = /(?<![\w\-])([A-Z]{2,4}(?:-[A-Z0-9]{1,12}){3,})(?![\w\-])/g;
+const ANL_RE = /(?<![\p{L}])Anlagen?\s+(\d{1,2}(?:\s*(?:,|und|bis)\s*\d{1,2})*)(?![\d:])/gu;
+const DATUM_RE = /(?<![\d.])(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)/g;
+const PNR_RE = /(?<![\d.,\p{L}])(\d{2}\.\d{3,6})(?!\d|[.,]\d)/gu;
+const STRASSE_WORT = String.raw`straße|strasse|str\.|weg|platz|allee|gasse|ring|damm|ufer|pfad|chaussee|markt|steig|stieg|wall|graben|kamp|hof`;
+const STRASSE_RE = new RegExp(String.raw`(?<![\p{L}\d])((?:\p{Lu}[\p{L}\-]*\s(?:Straße|Strasse|Str\.|Weg|Platz|Allee|Gasse|Ring|Damm|Ufer|Pfad|Chaussee|Markt|Steig|Wall|Graben|Kamp|Hof))|(?:\p{Lu}[\p{L}\-]*?(?:${STRASSE_WORT})))\s+(\d{1,4}(?:\s?[a-z])?)(?![\p{L}\d])`, 'gu');
+const ID_RE = /(?<![\w\-\/.])([A-Za-z0-9][A-Za-z0-9\-\/.]{3,}[A-Za-z0-9])(?![\w\-\/])/g;
+
+/** Zahlenliste „2, 3 und 5“, „7 bis 10“ → [{ n, von, bis }] (Positionen relativ zum Listenanfang); „bis“ füllt nur die Menge. */
+function zahlenListe(t){
+  const teile = [...t.matchAll(/\d{1,4}/g)].map(m => ({ n: Number(m[0]), von: m.index, bis: m.index + m[0].length }));
+  const menge = new Set(teile.map(x => x.n));
+  for (const m of t.matchAll(/(\d{1,4})\s*bis\s*(\d{1,4})/g)){ const a = Number(m[1]), b = Number(m[2]); if (b > a && b - a < 200) for (let i = a; i <= b; i++) menge.add(i); }
+  return { teile, menge };
+}
+/** Sätze eines Textes mit Positionen. Punkt nach Abkürzung, Initiale oder Ordnungszahl trennt nicht – im Zweifel bleibt ein Satz länger
+    (dann eher „ohne Beleg“ als eine falsche Zuordnung). */
+const ABK = new Set(['nr','ca','bzw','vgl','ggf','inkl','max','min','dr','hr','fr','str','abb','tab','anl','ziff','st','std','mio','tsd','usw','etc','evtl','sog','gem','lt','pkt','geb','kap','bl','u','z','e','d','s','o','i','r','b','v','m','a','h','n','prof','dipl','ing','zzgl','abs','bspw','jun','sen']);
+function saetze(text){
+  const out = []; let start = 0;
+  const re = /[.!?](?=\s+["„(]?[\p{Lu}\d])/gu; let m;
+  while ((m = re.exec(text))){
+    const vor = text.slice(start, m.index), wort = (/([\p{L}\d]+)$/u.exec(vor) || [, ''])[1];
+    if (ABK.has(wort.toLowerCase()) || /^\d{1,2}$/.test(wort) || /^\p{Lu}$/u.test(wort)) continue;
+    out.push({ von: start, bis: m.index + 1 }); start = m.index + 1; }
+  out.push({ von: start, bis: text.length });
+  return out.filter(x => text.slice(x.von, x.bis).trim());
+}
+const ISO = (t, mo, j) => `${j}-${String(mo).padStart(2, '0')}-${String(t).padStart(2, '0')}`;
+const isoAus = v => { const t = tidy(v); if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t; const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(t); return m ? ISO(m[1], m[2], m[3]) : ''; };
+const deDatum = iso => /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : iso;
+/** Kleinschreibung, ein Leerzeichen, Striche/Anführungszeichen angeglichen – mit Rückverweis auf die Originalpositionen. */
+function normMitMap(text){
+  let s = '', map = [], leer = false;
+  for (let i = 0; i < text.length; i++){
+    let c = text[i];
+    if (/\s/.test(c)){ if (!leer && s){ s += ' '; map.push(i); } leer = true; continue; }
+    leer = false; c = c.toLocaleLowerCase('de').replace(/[‐-―−]/, '-').replace(/[„“”‚‘’«»]/, '"');
+    for (const ch of c){ s += ch; map.push(i); } }
+  return { s, map };
+}
+const normText = t => normMitMap(String(t || '')).s;
+const strassenKey = (name, nr) => tidy(name).toLocaleLowerCase('de').replace(/ß/g, 'ss').replace(/(?:strasse|str\.?)$/, 'str').replace(/[^\p{L}\d]/gu, '') + '|' + tidy(nr).toLowerCase().replace(/\s/g, '');
+function strassenIn(text){ return [...String(text || '').matchAll(STRASSE_RE)].map(m => ({ key: strassenKey(m[1], m[2]), text: m[0], von: m.index, bis: m.index + m[0].length })); }
+const idKey = t => tidy(t).toUpperCase().replace(/[\-\/.\s]/g, '');
+const schadenTeile = v => String(v || '').split(/[\n;]+/).map(tidy).filter(Boolean);
+const BUERO = { strassen: new Set(['gouleystr|59']), namen: ['schiffers', 'eurofins', 'würselen', 'sachverständigenbüro'] };
+
+/* ---------- Werte vergleichen ---------- */
+/** Faktor: Wert in Einheit a × f = Wert in Einheit b, nur über die zwei bestehenden Tabellen; null = nicht vergleichbar. */
+function faktor(a, b, param){
+  if (A.einheit(a) === A.einheit(b)) return 1;
+  const tab = param === 'Chlorid' ? R.chloridEinheit : param === 'PAK' ? R.pakEinheit : null; if (!tab) return null;
+  const fa = tab(a), fb = tab(b); return fa && fb ? fb / fa : null;
+}
+const nachkomma = t => { const m = /,(\d+)\s*$/.exec(t); return m ? m[1].length : 0; };
+const fmt = (v, d) => v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false });
+const ziffern = t => String(t).replace(/\D/g, '').split('').sort().join('');
+/** Text- gegen Laborwert. → { status, notiz } */
+function wertVergleich(textRoh, textU, m, param){
+  const f = faktor(textU, m.u, param);
+  if (f === null) return { status: 'ohne', notiz: `Einheit ${textU} lässt sich mit ${m.u} nicht vergleichen.` };
+  const t = A.ergebnis(textRoh), l = { q: m.q, v: m.v };
+  const gleichZahl = (x, y) => Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(y));
+  if (t.q === 'unklar' || l.q === 'unklar'){
+    if (tidy(textRoh) === tidy(m.roh) && f === 1) return { status: 'belegt', notiz: 'Zahl gleich geschrieben wie im Prüfbericht.' };
+    return { status: 'ohne', notiz: `Die Zahl ist nicht eindeutig lesbar (Prüfbericht „${m.roh}“) – nicht verglichen.` };
+  }
+  if (t.q !== l.q) return { status: 'abweicht', notiz: `Prüfbericht: „${m.roh} ${m.u}“.` };
+  if (t.q === 'gemessen'){
+    if (gleichZahl(t.v * f, l.v)) return { status: 'belegt', notiz: f !== 1 ? `umgerechnet: ${m.roh} ${m.u}` : '' };
+    const d = nachkomma(textRoh), lt = l.v / f, gerundet = fmt(lt, d) === fmt(t.v, d);
+    const notiz = gerundet ? `gerundet? Prüfbericht: ${m.roh}${f !== 1 ? ' ' + m.u : ''}`
+      : f === 1 && ziffern(textRoh) === ziffern(m.roh) && tidy(textRoh) !== tidy(m.roh) ? `Ziffern vertauscht? Prüfbericht: ${m.roh} ${m.u}` : `Prüfbericht: ${m.roh} ${m.u}`;
+    return { status: 'abweicht', notiz, gerundet };
+  }
+  if (t.q === 'unter'){ if (t.v === null || l.v === null || gleichZahl(t.v * f, l.v)) return { status: 'belegt', notiz: '' }; return { status: 'abweicht', notiz: `Prüfbericht: „${m.roh} ${m.u}“.` }; }
+  if (t.q === 'nn') return { status: 'belegt', notiz: '' };
+  return { status: 'ohne', notiz: 'nicht bestimmt (n. b.)' };
+}
+
+/* ---------- Projektdaten aufbereiten ---------- */
+/** LabelKit-Datei → Proben je Nummer (PAK, Chlorid, Asbest, Sonstige – fortlaufend wie ResultKit/LabelKit) und Brandgeruchsliste. */
+function labelkitProben(lk){
+  const nr = new Map(), doppelt = new Set(), storniert = new Map(), brandgeruch = [];
+  if (!lk) return { nr, doppelt, storniert, brandgeruch, da: false };
+  const LISTEN = [['proben', 'PAK'], ['chloridProben', 'Chlorid'], ['asbestProben', 'Asbest'], ['sonstigeProben', 'Sonstige']];
+  for (const [k, typ] of LISTEN) for (const p of Array.isArray(lk[k]) ? lk[k] : []){ if (!p || typeof p !== 'object') continue;
+    const n = R.number(p); if (!n) continue;
+    if (p.storniert){ storniert.set(n, { p, typ }); continue; }
+    if (nr.has(n)) doppelt.add(n); else nr.set(n, { p, typ }); }
+  for (const n of nr.keys()) storniert.delete(n);
+  (Array.isArray(lk.brandgeruchProben) ? lk.brandgeruchProben : []).forEach((p, i) => brandgeruch.push({ nr: i + 1, p }));
+  return { nr, doppelt, storniert, brandgeruch, da: true };
+}
+const lkZeile = (n, e) => e ? [`P${n}`, e.typ, tidy(e.p.z2), tidy(e.p.z3), tidy(e.p.z4), tidy(e.p.matrix), e.p.datum ? deDatum(isoAus(e.p.datum)) : ''].filter(Boolean).join(' · ') : '';
+
+/** Daten für die Analyse aufbereiten (aus dem, was die App gelesen hat). */
+function datenAufbereiten(d){
+  const P = { ...d };
+  P.lkp = labelkitProben(d.lk);
+  P.jeProbe = new Map();
+  for (const x of d.messungen || []){ const l = x.label || ''; if (!l) continue; P.jeProbe.set(l, [...(P.jeProbe.get(l) || []), x]); }
+  P.konfliktProben = new Set((d.konflikte || []).flatMap(k => k.proben.map(p => String(p).toUpperCase())));
+  // eigene Angaben (Projektdaten, Ordnername, LabelKit, Auftragsreferenzen) – was hier vorkommt, ist nie „anderes Projekt“
+  const pj = d.pj || {};
+  const eigeneTexte = [d.projekt.name, ...Object.values(pj).filter(v => typeof v === 'string'), d.lkText || '', ...(d.auftragsreferenzen || [])];
+  P.eigenNorm = normText(eigeneTexte.join(' \n '));
+  P.eigeneStrassen = new Set(eigeneTexte.flatMap(t => strassenIn(t).map(x => x.key)));
+  P.eigeneSchaden = schadenTeile(pj.schadennummer).map(idKey).filter(k => k.length >= 4);
+  P.eigeneDaten = [];
+  const datum = (iso, was) => { if (/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) P.eigeneDaten.push({ iso, was }); };
+  datum(isoAus(pj.schadendatum), 'Schadendatum (Projektdaten)'); datum(isoAus(pj.ortstermin), 'Ortstermin (Projektdaten)'); datum(isoAus(pj.auftragsdatum), 'Auftragsdatum (Projektdaten)');
+  for (const [n, e] of P.lkp.nr) datum(isoAus(e.p.datum), `Probenahme P${n} (LabelKit)`);
+  if (d.lk) datum(isoAus(d.lk.brandgeruchDatum), 'Brandgeruch-Prüfung (LabelKit)');
+  for (const b of d.berichte || []) if (b.datum) datum(b.datum, `Prüfbericht ${b.code}`);
+  return P;
+}
+
+/* ---------- Analyse ---------- */
+const ICON = { belegt: 'ok', abweicht: 'warn', fremd: 'x', ohne: '', gewollt: 'ok' };
+function analysieren(doc, d){
+  const P = datenAufbereiten(d), marken = [], nichtPruefbar = [];
+  const andere = andereOhneEigene(d.andere, P.eigenNorm, P.eigeneStrassen);
+  const pnr = d.projekt.nr;
+  const neu = (seg, von, bis, art, o) => { const m = { id: marken.length, seg: seg.id, von, bis, art, text: seg.text.slice(von, bis), abschnitt: seg.abschnitt, ...o };
+    m.schluessel = [art, m.abschnitt || '', m.probe || '', normText(m.text), m.param || ''].join('|'); marken.push(m); return m; };
+  const frei = (seg, von, bis) => !marken.some(m => m.seg === seg.id && m.von < bis && von < m.bis);
+  const istBrandgeruch = seg => /brandgeruch/i.test(seg.titel || '');
+  const kontextParam = (satz, seg, kopf) => {
+    const c = /chlorid/i.test(kopf || '') || /chlorid/i.test(satz), p = /PAK|EPA|Summenwert/.test(kopf || '') || /PAK|EPA|Summenwert/.test(satz);
+    if (c && !p) return 'Chlorid'; if (p && !c) return 'PAK';
+    if (c && p) return '';
+    if (/korrosion|chlorid/i.test(seg.titel || '')) return 'Chlorid'; if (/organisch|PAK/i.test(seg.titel || '')) return 'PAK';
+    return '';
+  };
+  const nichtPruefbarGrund = label => {
+    if (P.konfliktProben.has(label)) return 'zwei Prüfberichte für dieselbe Probe (ungeklärt, siehe ResultKit)';
+    if ((d.pdfOhneXml || []).length && !d.aktuell) return 'Prüfbericht nur als PDF, ResultKit-Übernahme nicht aktuell';
+    if (d.ergebnisseDa && !d.aktuell) return 'ResultKit-Übernahme nicht aktuell';
+    if ((d.pdfOhneXml || []).length && !d.ergebnisseDa) return 'Prüfbericht nur als PDF, nicht in ResultKit übernommen';
+    return 'noch kein Laborwert';
+  };
+  /* --- Probe: gibt es sie? Raum: passt er? --- */
+  const probeInfo = (n, bg) => {
+    if (bg){ const e = P.lkp.brandgeruch.find(x => x.nr === n); return e ? { da: true, bg: true, text: [tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', '), zeile: `Brandgeruch-Probe ${n} · ${[tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', ')}` } : { da: false, bg: true }; }
+    const e = P.lkp.nr.get(n), l = 'P' + n;
+    if (P.lkp.doppelt.has(n)) return { da: true, doppelt: true, zeile: `P${n} ist in LabelKit doppelt vergeben` };
+    if (e) return { da: true, e, zeile: lkZeile(n, e), raum: tidy(e.p.z2) || tidy(e.p.raum) };
+    if (P.lkp.storniert.has(n)) return { da: false, storniert: true };
+    const ms = P.jeProbe.get(l); if (ms && ms.length) return { da: true, ausBericht: true, zeile: `Probe ${n} im Prüfbericht ${ms[0].bericht}`, raum: ms[0].desc };
+    return { da: false };
+  };
+  const probeMarke = (seg, von, bis, n, bg) => {
+    if (!frei(seg, von, bis)) return;
+    const i = probeInfo(n, bg), probe = (bg ? 'B' : 'P') + n;
+    if (i.da) return neu(seg, von, bis, 'probe', { probe, status: 'belegt', titel: bg ? `Brandgeruch-Probe ${n}` : `Probe ${n}`, beleg: [[bg ? 'LabelKit' : (i.ausBericht ? 'Prüfbericht' : 'LabelKit'), i.zeile]] });
+    if (!P.lkp.da) return neu(seg, von, bis, 'probe', { probe, status: 'ohne', titel: `Probe ${n}`, notiz: 'Keine LabelKit-Datei dieses Projekts – Probe nicht prüfbar.' });
+    if (i.storniert) return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: `Probe ${n}`, befund: `P${n} ist in LabelKit storniert`, notiz: 'Im Text steht sie trotzdem.' });
+    return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: `Probe ${n}`, befund: bg ? `Brandgeruch-Probe ${n} gibt es in LabelKit nicht` : `Probe ${n} gibt es in diesem Projekt nicht`, notiz: bg ? `LabelKit hat ${P.lkp.brandgeruch.length} Brandgeruch-Proben.` : 'Weder in LabelKit noch in einem Prüfbericht.' });
+  };
+  const raumMarke = (seg, von, bis, n, bg) => {
+    const roh = seg.text.slice(von, bis), t = roh.replace(/,\s*Tiefe\b.*$/i, '').trim();
+    if (!t || /^(Material|Referenz|Freimessung|vorläufig)\b/i.test(t) || !frei(seg, von, von + t.length)) return;
+    const i = probeInfo(n, bg); if (!i.da || i.doppelt) return;
+    const soll = bg ? i.text : i.raum; if (!soll) return;
+    const k = R.beschreibungKey(t), ok = [soll, R.raumAusschreiben(soll).text].some(x => R.beschreibungKey(x) === k);
+    const probe = (bg ? 'B' : 'P') + n, quelle = bg || !i.ausBericht ? 'LabelKit' : 'Prüfbericht';
+    if (ok) return neu(seg, von, von + t.length, 'raum', { probe, status: 'belegt', titel: `Entnahmestelle ${bg ? 'Brandgeruch-Probe ' : 'P'}${n}`, beleg: [[quelle, i.zeile]] });
+    const anders = bg ? null : [...P.lkp.nr].find(([m, e]) => m !== n && [tidy(e.p.z2), R.raumAusschreiben(e.p.z2).text].some(x => R.beschreibungKey(x) === k));
+    return neu(seg, von, von + t.length, 'raum', { probe, status: 'abweicht', titel: `Entnahmestelle ${bg ? 'Brandgeruch-Probe ' : 'P'}${n}`,
+      befund: `${bg ? 'Brandgeruch-Probe ' + n : 'P' + n} heißt in ${quelle} „${soll}“`, notiz: `Im Text steht „${t}“.${anders ? ` So heißt P${anders[0]}.` : ''}`, beleg: [[quelle, i.zeile]] });
+  };
+  /* --- Wert einer Probe --- */
+  const wertMarke = (seg, von, bis, roh, u, n, param, grund) => {
+    if (!frei(seg, von, bis)) return;
+    const titelW = `${roh} ${u}`.replace(/\s+/g, ' ');
+    if (!PRUEF_EINHEIT.test(einheitKurz(u))) return neu(seg, von, bis, 'wert', { status: 'ohne', titel: titelW, notiz: 'Eigene Angabe des Sachverständigen (keine Laboreinheit).' });
+    if (n == null) return neu(seg, von, bis, 'wert', { status: 'ohne', titel: titelW, notiz: grund || 'Keiner Probe zugeordnet.' });
+    const label = 'P' + n, alle = (P.jeProbe.get(label) || []).filter(x => R.CHLORID.test(x.p) || R.SUMME.test(x.p));
+    const lk = probeInfo(n, false);
+    const istParam = (x, p) => p === 'Chlorid' ? R.CHLORID.test(x.p) : R.SUMME.test(x.p);
+    let kand = ['Chlorid', 'PAK'].filter(p => alle.some(x => istParam(x, p) && faktor(u, x.u, p) !== null));
+    if (param) kand = kand.filter(p => p === param);
+    if (!alle.length){
+      if (!lk.da && P.lkp.da && !P.lkp.storniert.has(n)) return neu(seg, von, bis, 'wert', { probe: label, status: 'abweicht', titel: titelW, befund: `Probe ${n} gibt es in diesem Projekt nicht`, notiz: `Der Wert ${titelW} gehört zu keiner Probe.` });
+      const g = nichtPruefbarGrund(label); nichtPruefbar.push(g);
+      return neu(seg, von, bis, 'wert', { probe: label, status: 'ohne', titel: `${titelW} · P${n}`, nichtPruefbar: g, notiz: `Nicht prüfbar: ${g}.`, beleg: lk.zeile ? [['LabelKit', lk.zeile]] : [] });
+    }
+    if (kand.length !== 1){
+      if (param && !kand.length) return neu(seg, von, bis, 'wert', { probe: label, status: 'abweicht', titel: `${titelW} · P${n}`, param, befund: `P${n} hat keinen ${param === 'PAK' ? 'Σ16 EPA-PAK' : 'Chlorid'}-Wert in ${u}`, notiz: `Im Prüfbericht: ${alle.map(x => `${x.p} ${x.roh} ${x.u}`).join(' · ')}`, beleg: lk.zeile ? [['LabelKit', lk.zeile]] : [] });
+      return neu(seg, von, bis, 'wert', { probe: label, status: 'ohne', titel: `${titelW} · P${n}`, notiz: 'Parameter nicht eindeutig (Chlorid oder PAK?) – nicht verglichen.' });
+    }
+    const p = kand[0], werte = alle.filter(x => istParam(x, p) && faktor(u, x.u, p) !== null);
+    const m = werte.find(x => A.einheit(x.u) === A.einheit(u)) || werte.find(x => R.FLAECHE.test(x.u)) || werte[0];
+    const v = wertVergleich(roh, u, m, p), name = p === 'PAK' ? 'Σ16 EPA-PAK' : 'Chlorid';
+    const beleg = [['Prüfbericht', `${m.bericht}, Probe ${n}${m.probe ? ` (Labor-Nr. ${m.probe})` : ''}: ${m.p} ${m.roh} ${m.u}${m.vorlaeufig ? ' – vorläufig' : ''}`]];
+    if (lk.zeile) beleg.push(['LabelKit', lk.zeile]);
+    beleg.push(['ResultKit', d.quelle === 'resultkit' ? `übernommen${d.uebernommen ? ' am ' + deDatum(String(d.uebernommen).slice(0, 10)) : ''}, Übernahme aktuell` : d.ergebnisseDa ? 'Übernahme nicht aktuell – Wert aus der XML im Ordner' : 'nichts übernommen – Wert aus der XML im Ordner']);
+    const unt = (d.unterschiede || []).find(x => x.probe === label && x.p === m.p); if (unt) beleg.push(['Achtung', `in ResultKit steht noch „${unt.resultkit.roh}“ (${unt.resultkit.bericht})`]);
+    return neu(seg, von, bis, 'wert', { probe: label, param: p, status: v.status, titel: `${titelW} · ${name} · P${n}`, beleg, notiz: v.notiz, gerundet: v.gerundet,
+      befund: v.status === 'abweicht' ? `${name} an P${n}: im Text ${titelW}, im Prüfbericht ${m.roh} ${m.u}` : '', pdf: m.pdfName || '' });
+  };
+
+  /* --- Anlagenliste (im Bericht selbst) --- */
+  const anlagenListe = new Map();
+  for (const s of doc.segs){ const m = /^\s*Anlage\s+(\d{1,2})\s*:\s*([\s\S]*)$/.exec(s.text); if (m) anlagenListe.set(Number(m[1]), { text: tidy(m[2]), seg: s.id }); }
+
+  /* --- Tabellen (BerichtKit-Ergebnistabellen und ähnlich gebaute) --- */
+  const tabSegs = new Set();
+  for (const b of doc.bloecke){ if (b.typ !== 'tab' || b.zeilen.length < 2) continue;
+    const kopf = b.zeilen[0].map(s => tidy(s.text)), sp = re => kopf.findIndex(k => re.test(k));
+    const iP = sp(/^Probe\b/i); if (iP < 0) continue;
+    const iL = sp(/^Labor-?\s?Nr/i), iS = sp(/^(Entnahmestelle|Probenahmestelle|Stelle|Raum)/i);
+    const iW = kopf.findIndex(k => /\[(.+)\]/.test(k) && /chlorid|PAK|EPA|summe/i.test(k));
+    const uW = iW >= 0 ? /\[(.+)\]/.exec(kopf[iW])[1] : '', pW = iW >= 0 ? (/chlorid/i.test(kopf[iW]) ? 'Chlorid' : 'PAK') : '';
+    for (const z of b.zeilen.slice(1)){
+      const nm = /^\s*(\d{1,4})\b/.exec(z[iP] ? z[iP].text : ''); if (!nm) continue; const n = Number(nm[1]);
+      for (const s of z) tabSegs.add(s.id);
+      probeMarke(z[iP], nm.index + nm[0].length - nm[1].length, nm.index + nm[0].length, n, false);
+      if (iS >= 0 && z[iS]){ const t = z[iS].text, a = t.length - t.trimStart().length; raumMarke(z[iS], a, t.trimEnd().length, n, false); }
+      if (iL >= 0 && z[iL] && tidy(z[iL].text)){ const t = z[iL].text, a = t.length - t.trimStart().length, ms = P.jeProbe.get('P' + n) || [], lab = ms.find(x => x.probe)?.probe;
+        if (lab) neu(z[iL], a, t.trimEnd().length, 'labnr', { probe: 'P' + n, status: A.norm(lab) === A.norm(t) ? 'belegt' : 'abweicht', titel: `Labor-Nr. P${n}`, beleg: [['Prüfbericht', `${ms[0].bericht}, Probe ${n}: Labor-Nr. ${lab}`]], befund: A.norm(lab) === A.norm(t) ? '' : `Labor-Nr. von P${n}: im Text ${tidy(t)}, im Prüfbericht ${lab}` }); }
+      if (iW >= 0 && z[iW]){ const t = z[iW].text, roh = tidy(t);
+        if (roh && /\d|n\.\s*n\.|unter\s+BG/i.test(roh) && !/^[–-]$/.test(roh)){ const a = t.indexOf(roh); wertMarke(z[iW], a, a + roh.length, roh, uW, n, pW); } }
+    } }
+
+  /* --- Absätze und übrige Zellen --- */
+  for (const seg of doc.segs){
+    const text = seg.text; if (!text.trim() || seg.leer) continue;
+    const bg = istBrandgeruch(seg), inTab = tabSegs.has(seg.id);
+    for (const sz of saetze(text)){
+      const satz = text.slice(sz.von, sz.bis);
+      // Probenverweise im Satz
+      const refs = [];
+      for (const m of satz.matchAll(PROBEN_RE)){ const l = zahlenListe(m[2]), basis = sz.von + m.index + m[0].length - m[2].length;
+        refs.push({ von: sz.von + m.index, bis: sz.von + m.index + m[0].length, einzeln: l.teile.length === 1, menge: l.menge, teile: l.teile.map(x => ({ n: x.n, von: basis + x.von, bis: basis + x.bis })) }); }
+      for (const m of satz.matchAll(P_RE)){ const v = sz.von + m.index; if (refs.some(r => r.von <= v && v < r.bis)) continue; const n = Number(m[1]);
+        refs.push({ von: v, bis: v + m[0].length, einzeln: true, menge: new Set([n]), teile: [{ n, von: v, bis: v + m[0].length }], kurz: true }); }
+      refs.sort((a, b) => a.von - b.von);
+      const proben = new Set(refs.flatMap(r => [...r.menge]));
+      if (!inTab) for (const r of refs){
+        if (r.einzeln) probeMarke(seg, r.von, r.bis, r.teile[0].n, bg);
+        else for (const t of r.teile) probeMarke(seg, t.von, t.bis, t.n, bg);
+        if (!r.einzeln) continue;
+        const n = r.teile[0].n, nach = text.slice(r.bis);
+        let m = /^\s*\(([^()\n]*)\)/.exec(nach);
+        if (m){ const a = r.bis + nach.indexOf('(') + 1; raumMarke(seg, a + (m[1].length - m[1].trimStart().length), a + m[1].trimEnd().length, n, bg); continue; }
+        m = /^,\s*([^()\n]*)\)/.exec(nach); const vor = text.slice(0, r.von);
+        if (m && /\(\s*$/.test(vor)){ const a = r.bis + nach.indexOf(m[1]); raumMarke(seg, a, a + m[1].trimEnd().length, n, bg); }
+      }
+      // Werte mit Einheit
+      for (const m of satz.matchAll(WERT_RE)){
+        const von = sz.von + m.index, bis = von + m[0].length; if (!frei(seg, von, bis)) continue;
+        const roh = (m[1] ? m[1] + ' ' : '') + m[2], u = m[3];
+        if (bg && !inTab){ neu(seg, von, bis, 'wert', { status: 'ohne', titel: `${roh} ${u}`, notiz: 'Brandgeruch-Prüfung – keine Laborwerte.' }); continue; }
+        const nach = text.slice(bis), dicht = /^\s*(?:\(\s*Probe\s+(\d{1,4})(?!\s*(?:,\s*\d|und|bis))|in\s+(?:der\s+)?(?:\p{L}*probe|Probe)\s+(\d{1,4})(?!\s*(?:,\s*\d|und|bis)))/u.exec(nach);
+        let n = null, grund = '';
+        if (dicht) n = Number(dicht[1] || dicht[2]);
+        else if (proben.size === 1) n = [...proben][0];
+        else if (proben.size > 1) grund = 'Mehrere Proben im Satz – die Zahl lässt sich nicht sicher einer Probe zuordnen.';
+        else grund = 'Keiner Probe zugeordnet.';
+        wertMarke(seg, von, bis, roh, u, n, kontextParam(satz, seg), grund);
+      }
+    }
+    if (inTab) continue;
+    // Prüfberichtsnummern
+    for (const m of text.matchAll(PB_RE)){ const von = m.index, bis = von + m[0].length; if (!frei(seg, von, bis)) continue; pruefberichtMarke(seg, von, bis, m[1]); }
+    // Anlagen
+    if (!/^\s*Anlage\s+\d{1,2}\s*:/.test(text)) for (const m of text.matchAll(ANL_RE)){ const l = zahlenListe(m[1]), basis = m.index + m[0].length - m[1].length;
+      for (const t of l.teile){ const von = l.teile.length === 1 ? m.index : basis + t.von, bis = basis + t.bis; if (frei(seg, von, bis)) anlageMarke(seg, von, bis, t.n, l.teile.length, l.teile.indexOf(t)); } }
+    // Datumsangaben
+    for (const m of text.matchAll(DATUM_RE)){ const von = m.index, bis = von + m[0].length; if (frei(seg, von, bis)) datumMarke(seg, von, bis, ISO(m[1], m[2], m[3])); }
+    // Projektnummern
+    for (const m of text.matchAll(PNR_RE)){ const von = m.index, bis = von + m[1].length; if (!frei(seg, von, bis)) continue;
+      if (m[1] === pnr) neu(seg, von, bis, 'projektnr', { status: 'belegt', titel: `Projektnummer ${m[1]}`, beleg: [['Projektordner', d.projekt.name]] });
+      else if (andere && andere.nr.has(m[1])) neu(seg, von, bis, 'projektnr', { status: 'fremd', titel: `Projektnummer ${m[1]}`, befund: `„${m[1]}“ ist Projekt ${andere.nr.get(m[1])}`, notiz: `Dieses Projekt ist ${pnr}.`, beleg: [['Archiv', andere.nr.get(m[1])]] }); }
+    // Schaden-Nr.
+    schadenMarken(seg);
+    // Straßen
+    for (const x of strassenIn(text)){ if (!frei(seg, x.von, x.bis) || BUERO.strassen.has(x.key)) continue;
+      if (P.eigeneStrassen.has(x.key)) { neu(seg, x.von, x.bis, 'adresse', { status: 'belegt', titel: x.text, beleg: [['Projektdaten', tidy((d.pj || {}).objekt) || d.projekt.name]] }); continue; }
+      const fr = andere && andere.strassen.get(x.key);
+      if (fr) neu(seg, x.von, x.bis, 'adresse', { status: 'fremd', titel: `„${x.text}“`, befund: `„${x.text}“ gehört zu ${fr[0].name}`, notiz: `Steht im Archiv bei ${fr.map(f => f.name).join(', ')}. In diesem Projekt kommt die Adresse nicht vor.`, beleg: fr.map(f => ['Archiv', `${f.name}: ${f.text}`]) });
+      else neu(seg, x.von, x.bis, 'adresse', { status: 'ohne', titel: x.text, notiz: 'Adresse steht weder in diesem noch in einem anderen Projekt.' }); }
+    // Namen (Auftraggeber, VN, Versicherer) anderer Projekte
+    if (andere && andere.namen.length){ const nm = normMitMap(text);
+      for (const f of andere.namen){ let i = -1;
+        while ((i = nm.s.indexOf(f.norm, i + 1)) >= 0){ const vorC = nm.s[i - 1] || ' ', nachC = nm.s[i + f.norm.length] || ' ';
+          if (/[\p{L}\d]/u.test(vorC) || /[\p{L}\d]/u.test(nachC)) continue;
+          const von = nm.map[i], bis = nm.map[i + f.norm.length - 1] + 1; if (!frei(seg, von, bis)) continue;
+          neu(seg, von, bis, 'name', { status: 'fremd', titel: `„${text.slice(von, bis)}“`, befund: `„${text.slice(von, bis)}“ ist ${f.feld} in ${f.name}`, notiz: 'In den Daten dieses Projekts kommt der Name nicht vor.', beleg: [['Archiv', `${f.name}: ${f.feld} ${f.text}`]] }); } } }
+  }
+
+  function pruefberichtMarke(seg, von, bis, code){
+    const fa = A.berichtsFassung(code), alle = d.berichte || [], titel = `Prüfbericht ${code}`;
+    const gleich = alle.filter(b => A.norm(b.code) === A.norm(code)), sel = gleich[0];
+    const neuere = alle.filter(b => b.fassung !== null && fa.fassung !== null && b.grund === fa.grund && b.fassung > fa.fassung).sort((a, b) => b.fassung - a.fassung);
+    const ersetzt = (d.ersetzt || []).some(c => A.norm(c) === A.norm(code));
+    if (sel && sel.fremd) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code} nennt Projekt ${sel.fremd}`, notiz: `Auftragsreferenz „${sel.ref}“ – seine Werte zählen hier nicht.` });
+    if (neuere.length || ersetzt){ const n = neuere[0];
+      return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code.slice(-3)} ist überholt`, notiz: n ? `Im Projektordner liegt die Fassung ${n.code}.` : 'ResultKit führt ihn als ersetzt.', beleg: n ? [['Laborergebnisse', `${n.code}${n.datei ? ` (${n.datei})` : ''}`]] : [] }); }
+    if (sel) return neu(seg, von, bis, 'pruefbericht', { status: 'belegt', titel, beleg: [['Laborergebnisse', `${sel.code}${sel.datei ? ` (${sel.datei})` : ''}${sel.vorlaeufig ? ' – vorläufig' : ''}${sel.quelle === 'resultkit' ? ' · in ResultKit übernommen' : ''}`]], pdf: sel.pdf || '' });
+    const pdf = (d.pdfNamen || []).find(n => A.norm(n).includes(A.norm(code)));
+    if (pdf) return neu(seg, von, bis, 'pruefbericht', { status: 'belegt', titel, beleg: [['Laborergebnisse', `PDF „${pdf}“ (Nummer nur im Dateinamen)`]], pdf });
+    if (alle.length) return neu(seg, von, bis, 'pruefbericht', { status: 'abweicht', titel, befund: `Prüfbericht ${code} liegt nicht in „Laborergebnisse“`, notiz: `Im Ordner: ${[...new Set(alle.map(b => b.code))].join(', ')}.` });
+    nichtPruefbar.push('kein Prüfbericht lesbar');
+    return neu(seg, von, bis, 'pruefbericht', { status: 'ohne', titel, nichtPruefbar: 'kein Prüfbericht lesbar', notiz: 'Nicht prüfbar: in „Laborergebnisse“ ist kein Prüfbericht lesbar.' });
+  }
+  function anlageMarke(seg, von, bis, n, anzahl, index){
+    if (!anlagenListe.size) return neu(seg, von, bis, 'anlage', { status: 'ohne', titel: `Anlage ${n}`, notiz: 'Der Bericht hat keine Anlagenliste – nicht prüfbar.' });
+    const e = anlagenListe.get(n);
+    if (!e) return neu(seg, von, bis, 'anlage', { status: 'abweicht', titel: `Anlage ${n}`, befund: `Anlage ${n} steht nicht in der Anlagenliste`, notiz: `Liste: ${[...anlagenListe.keys()].sort((a, b) => a - b).map(k => 'Anlage ' + k).join(', ')}.` });
+    // Satz: welcher Gegenstand wird mit dieser Anlage verbunden?
+    const sz = saetze(seg.text).find(x => x.von <= von && von < x.bis), satz = seg.text.slice(sz.von, sz.bis);
+    const codes = [...satz.matchAll(PB_RE)].map(m => m[1]);
+    let erwartet = '';
+    if (codes.length && codes.length === anzahl) erwartet = codes[index];
+    else if (anzahl === 1 && codes.length === 1) erwartet = codes[0];
+    const vor = seg.text.slice(Math.max(sz.von, von - 60), von);
+    const art = /Bilddokumentation[^()]*\($/.test(vor) ? 'Bilddokumentation' : /Probenplan[^()]*\($/.test(vor) ? 'Probenplan' : /Brandgeruch/i.test(satz) && !codes.length ? 'Brandgeruch' : '';
+    const beleg = [['Anlagenliste', `Anlage ${n}: ${e.text}`]];
+    if (erwartet && !A.norm(e.text).includes(A.norm(erwartet))) return neu(seg, von, bis, 'anlage', { status: 'abweicht', titel: `Anlage ${n}`, befund: `Anlage ${n} ist laut Liste nicht ${erwartet}`, notiz: `Anlagenliste: „${e.text}“.`, beleg });
+    if (art && !new RegExp(art, 'i').test(e.text)) return neu(seg, von, bis, 'anlage', { status: 'abweicht', titel: `Anlage ${n}`, befund: `Anlage ${n} ist laut Liste nicht die ${art}`, notiz: `Anlagenliste: „${e.text}“.`, beleg });
+    return neu(seg, von, bis, 'anlage', { status: 'belegt', titel: `Anlage ${n}`, beleg });
+  }
+  function datumMarke(seg, von, bis, iso){
+    const vor = seg.text.slice(Math.max(0, von - 45), von), nach = seg.text.slice(bis, bis + 60), titel = `Datum ${deDatum(iso)}`;
+    let rolle = '';
+    if (/Schaden vom:\s*$/.test(vor) || /Brandschaden vom\s*$/.test(vor) || /(?:^|\s)Am\s*$/.test(vor) && /^\s*kam es/.test(nach)) rolle = 'schadendatum';
+    else if (/(?:^|\s)[Aa]m\s*$/.test(vor) && /^\s*wurde unser Büro/.test(nach)) rolle = 'auftragsdatum';
+    else if (/(?:^|\s)am\s*$/.test(vor) && /^\s*sensorisch auf Brandgeruch/.test(nach)) rolle = 'brandgeruch';
+    else if (/(?:fand|fanden)\s+(?:eine\s+)?Besichtigung/.test(seg.text.slice(von)) && /(?:^|\s)(?:[Aa]m|und am)\s*$/.test(vor)) rolle = 'ortstermin';
+    else if (/(Sanierungsvorschlag|Untersuchungsbericht|Bericht|Mitteilung|Gutachten)\s+vom\s*$/.test(vor) || /^\s*\p{Lu}[\p{L} .\-]*,\s*$/u.test(seg.text.slice(0, von)) && !nach.trim())
+      return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum des Berichts.' });
+    const pj = d.pj || {};
+    if (rolle){
+      const quellen = rolle === 'schadendatum' ? [['Projektdaten', 'Schadendatum', isoAus(pj.schadendatum)]] : rolle === 'auftragsdatum' ? [['Projektdaten', 'Auftragsdatum', isoAus(pj.auftragsdatum)]]
+        : rolle === 'brandgeruch' ? [['LabelKit', 'Brandgeruch-Prüfung', isoAus(d.lk && d.lk.brandgeruchDatum)]]
+        : [['Projektdaten', 'Ortstermin', isoAus(pj.ortstermin)], ...[...P.lkp.nr].map(([n, e]) => ['LabelKit', `Probenahme P${n}`, isoAus(e.p.datum)])];
+      const da = quellen.filter(q => q[2]);
+      if (!da.length) return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: `Kein ${quellen[0][1]} in den Daten – nicht prüfbar.` });
+      const ok = da.filter(q => q[2] === iso);
+      if (ok.length) return neu(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: [[ok[0][0], `${ok[0][1]}: ${deDatum(iso)}${ok.length > 1 ? ` (und ${ok.length - 1} weitere)` : ''}`]] });
+      const soll = [...new Set(da.map(q => q[2]))];
+      return neu(seg, von, bis, 'datum', { status: 'abweicht', titel, befund: `${quellen[0][1]}: im Text ${deDatum(iso)}, in den Daten ${soll.map(deDatum).join(' / ')}`, beleg: da.slice(0, 3).map(q => [q[0], `${q[1]}: ${deDatum(q[2])}`]) });
+    }
+    const passt = P.eigeneDaten.filter(x => x.iso === iso);
+    if (passt.length) return neu(seg, von, bis, 'datum', { status: 'belegt', titel, beleg: passt.slice(0, 4).map(x => ['Daten', x.was]) });
+    return neu(seg, von, bis, 'datum', { status: 'ohne', titel, notiz: 'Datum steht in keiner Projektdatei.' });
+  }
+  function schadenMarken(seg){
+    const text = seg.text, pj = d.pj || {}, eigen = schadenTeile(pj.schadennummer);
+    const lab = /Schaden-?\s?Nr\.?\s*:?[\t ]*([^\t\n]+?)\s*$/m.exec(text);
+    if (lab){ const v = lab[1].trim(), von = lab.index + lab[0].lastIndexOf(v), bis = von + v.length;
+      if (v && frei(seg, von, bis) && !/^\[/.test(v)){
+        if (eigen.some(e => idKey(e) === idKey(v))) neu(seg, von, bis, 'schadennr', { status: 'belegt', titel: `Schaden-Nr. ${v}`, beleg: [['Projektdaten', `Schaden-Nr. ${pj.schadennummer}`]] });
+        else { const fr = andere && andere.schaden.get(idKey(v));
+          if (fr) neu(seg, von, bis, 'schadennr', { status: 'fremd', titel: `Schaden-Nr. ${v}`, befund: `Schaden-Nr. „${v}“ gehört zu ${fr[0].name}`, notiz: eigen.length ? `In diesem Projekt: ${eigen.join(', ')}.` : 'In diesem Projekt ist keine Schaden-Nr. eingetragen.', beleg: fr.map(f => ['Archiv', `${f.name}: ${f.text}`]) });
+          else if (eigen.length) neu(seg, von, bis, 'schadennr', { status: 'abweicht', titel: `Schaden-Nr. ${v}`, befund: `Schaden-Nr.: im Text ${v}, in den Projektdaten ${eigen.join(' / ')}`, beleg: [['Projektdaten', `Schaden-Nr. ${pj.schadennummer}`]] });
+          else neu(seg, von, bis, 'schadennr', { status: 'ohne', titel: `Schaden-Nr. ${v}`, notiz: 'In den Projektdaten ist keine Schaden-Nr. eingetragen.' }); } } }
+    for (const m of text.matchAll(ID_RE)){ const v = m[1]; if (!/\d/.test(v)) continue; const k = idKey(v); if (k.length < 5) continue;
+      const von = m.index, bis = von + v.length; if (!frei(seg, von, bis)) continue;
+      if (P.eigeneSchaden.includes(k)) { neu(seg, von, bis, 'schadennr', { status: 'belegt', titel: `Schaden-Nr. ${v}`, beleg: [['Projektdaten', `Schaden-Nr. ${pj.schadennummer}`]] }); continue; }
+      const fr = andere && andere.schaden.get(k);
+      if (fr && !P.eigenNorm.includes(normText(v))) neu(seg, von, bis, 'schadennr', { status: 'fremd', titel: `„${v}“`, befund: `„${v}“ ist die Schaden-Nr. von ${fr[0].name}`, notiz: 'In diesem Projekt kommt die Nummer nicht vor.', beleg: fr.map(f => ['Archiv', `${f.name}: Schaden-Nr. ${f.text}`]) }); }
+  }
+
+  /* --- „Ist so gewollt“ anwenden, zählen --- */
+  const gewollt = new Map((d.gewollt || []).map(g => [g.schluessel, g]));
+  for (const m of marken){ m.icon = ICON[m.status]; if ((m.status === 'abweicht' || m.status === 'fremd') && gewollt.has(m.schluessel)) m.gewollt = gewollt.get(m.schluessel); }
+  const z = { belegt: 0, abweicht: 0, fremd: 0, ohne: 0, gewollt: 0 };
+  for (const m of marken){ if (m.gewollt) z.gewollt++; else z[m.status]++; }
+  const np = new Map(); for (const m of marken) if (m.nichtPruefbar) np.set(m.nichtPruefbar, (np.get(m.nichtPruefbar) || 0) + 1);
+  marken.sort((a, b) => a.seg - b.seg || a.von - b.von); marken.forEach((m, i) => { m.id = i; });   // Nummer = Platz in der Liste (Oberfläche greift über die Nummer zu)
+  return { marken, zaehler: z, nichtPruefbar: [...np].map(([grund, n]) => ({ grund, n })), anlagenListe: [...anlagenListe] };
+}
+
+/** Andere Projekte → Suchindex. eintraege: [{ name, nr, pj | null }] (pj null = nur Ordnername). */
+function andereIndex(eintraege, eigeneNr){
+  const nr = new Map(), strassen = new Map(), schaden = new Map(), namen = [];
+  const dazu = (map, k, w) => { const l = map.get(k) || []; if (!l.some(x => x.name === w.name)) l.push(w); map.set(k, l); };
+  let voll = 0, nurName = 0;
+  for (const e of eintraege){ if (!e || !e.nr || e.nr === eigeneNr) continue;
+    if (e.pj) voll++; else nurName++;
+    if (!nr.has(e.nr)) nr.set(e.nr, e.name);
+    const texte = [e.name, ...(e.pj ? [e.pj.objekt, e.pj.schadenort, e.pj.versicherungsnehmer, e.pj.auftraggeber] : [])];
+    for (const t of texte) for (const x of strassenIn(t)) if (!BUERO.strassen.has(x.key)) dazu(strassen, x.key, { name: e.name, text: x.text });
+    if (e.pj){
+      for (const t of schadenTeile(e.pj.schadennummer)){ const k = idKey(t); if (k.length >= 5 && /\d/.test(k)) dazu(schaden, k, { name: e.name, text: t }); }
+      for (const [feld, wert] of [['Auftraggeber', e.pj.auftraggeber], ['Versicherungsnehmer', e.pj.versicherungsnehmer], ['Versicherer', e.pj.versicherer]]){
+        const erste = tidy(String(wert || '').split(/\n|,(?=\s*\S*\d)/)[0]), n = normText(erste);
+        if (n.length < 10 || BUERO.namen.some(b => n.includes(b)) || /^(unbekannt|privat|-+)$/.test(n)) continue;
+        namen.push({ norm: n, text: erste, feld, name: e.name }); } } }
+  return { nr, strassen, schaden, namen, voll, nurName, gelesen: voll + nurName };
+}
+/** Namen und Straßen, die auch in diesem Projekt vorkommen, aus dem Index nehmen („nirgends in diesem Projekt“). */
+function andereOhneEigene(idx, eigenNorm, eigeneStrassen){
+  if (!idx) return idx;
+  return { ...idx, namen: idx.namen.filter(f => !eigenNorm.includes(f.norm)), strassen: new Map([...idx.strassen].filter(([k]) => !eigeneStrassen.has(k))) };
+}
+
+const api = Object.freeze({ VERSION, docxLesen, teilBloecke, absatzText, analysieren, andereIndex, andereOhneEigene, datenAufbereiten, wertVergleich, faktor, saetze, zahlenListe,
+  strassenIn, strassenKey, idKey, normText, isoAus, deDatum, labelkitProben, WERT_RE, BUERO });
+root.LektorKern = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="lektor-app">
+/* LEKTOR-APP – Ordner lesen, Bericht zeigen, Befunde, „Ist so gewollt“, Prüfprotokoll.
+   Geschrieben wird nur die eigene Datei: Spektron-Projekt → _Spektron/LektorKit/_LektorKit.json, Projekt vor Spektron →
+   Mitteilungen/_LektorKit.json (nie einen „_Spektron“-Ordner in einem alten Projekt anlegen). Alles andere wird nur gelesen. */
+(function(){
+'use strict';
+const SO = window.SpektronOrdner, A = window.ArchivAuswertung, R = window.LektorRegeln, K = window.LektorKern;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const tidy = A.tidy;
+const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
+const S = { archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
+$('version').textContent = ' ' + K.VERSION;
+
+/* ---------- Ordner ---------- */
+const gleichName = (a, b) => a.normalize('NFC').toLowerCase() === b.normalize('NFC').toLowerCase();
+async function unterordner(dir, name){
+  if (!dir) return null;
+  try{ return await dir.getDirectoryHandle(name); }catch(e){}
+  try{ for await (const h of dir.values()) if (h.kind === 'directory' && gleichName(h.name, name)) return h; }catch(e){}
+  return null;
+}
+async function dateiLesen(dir, name){ if (!dir) return null; try{ const f = await (await dir.getFileHandle(name)).getFile(); return { file: f, text: await f.text() }; }catch(e){ return null; } }
+const jsonVon = t => JSON.parse(String(t).replace(/^﻿/, ''));
+
+async function projektLesen(dir){
+  const name = dir.name, nr = SO.projektNr(name), D = { projekt: { name, nr }, hinweise: [] };
+  try{ const o = await SO.ort(dir, 'projekt'); const j = await dateiLesen(o.dir, '_Projekt.json'); D.pj = j ? jsonVon(j.text) : null;
+    if (!j) D.hinweise.push('Keine Projektdaten (_Projekt.json) – Datum, Adresse und Schaden-Nr. sind nicht prüfbar.'); }
+  catch(e){ D.pj = null; D.hinweise.push('Projektdaten nicht lesbar: ' + e.message); }
+  let lkDir = null;
+  try{ const o = await SO.ort(dir, 'labelkit'); lkDir = o.dir;
+    if (o.dir){ const w = await SO.labelkitWahl(o.dir, name);
+      if (w.datei){ D.lk = jsonVon(w.datei.text); D.lkName = w.datei.name; D.lkText = w.datei.text; D.lkStand = { name: 'Laboraufträge/' + w.datei.name, size: w.datei.file.size, t: w.datei.file.lastModified }; }
+      else if (w.fremd.length) D.hinweise.push(`In LabelKit liegt nur „${w.fremd[0]}“ – nach dem Namen nicht von diesem Projekt; nicht gelesen.`); }
+    if (!D.lk) D.hinweise.push('Keine LabelKit-Datei dieses Projekts – Proben und Entnahmestellen sind nicht prüfbar.'); }
+  catch(e){ D.hinweise.push('LabelKit-Datei nicht lesbar: ' + e.message); }
+  // Prüfberichte wie das Datenarchiv (archiv/lesen.js): XML in „Laborergebnisse“ und eine Ebene darunter; Dateistand wie ResultKit
+  const lab = await unterordner(dir, 'Laborergebnisse'), xml = [], oben = [], pdf = [];
+  const lauf = async (d, tiefe) => { for await (const h of d.values()){
+    if (h.kind === 'directory'){ if (tiefe < 1) await lauf(h, tiefe + 1); continue; }
+    if (tiefe === 0 && /\.(xml|pdf)$/i.test(h.name)){ const f = await h.getFile(); oben.push({ name: h.name, size: f.size, t: f.lastModified }); }
+    if (h.name.startsWith('~$')) continue;
+    if (/\.xml$/i.test(h.name)) xml.push(h); else if (/\.pdf$/i.test(h.name)) pdf.push({ name: h.name, h, tiefe }); } };
+  if (lab) await lauf(lab, 0);
+  D.labDir = lab; D.pdfHandles = pdf;
+  const berichte = [];
+  for (const h of xml){ const f = await h.getFile(); if (f.size > 10 * 1024 * 1024) continue; let r = null; try{ r = R.xmlLesen(await f.text()); }catch(e){} if (r) berichte.push({ ...r, datei: h.name, geaendert: f.lastModified }); }
+  const eigen = A.projektAuswerten(berichte, nr);
+  let datei = null, aktuell = false;
+  try{ const o = await SO.ort(dir, 'resultkit'); const j = await dateiLesen(o.dir, '_Ergebnisse.json');
+    if (j){ const x = jsonVon(j.text); if (!x || x.format !== 'spektron-ergebnisse' || x.version !== 1 || !Array.isArray(x.berichte) || typeof x.stand !== 'string') throw Error('kein bekanntes Format');
+      datei = x; aktuell = A.standKennung(D.lkStand ? [...oben, D.lkStand] : oben) === x.stand; } }
+  catch(e){ D.hinweise.push('_Ergebnisse.json lässt sich nicht lesen – geprüft wird gegen die Prüfberichte im Ordner.'); }
+  // Strenger als das Datenarchiv: Werte aus einer nicht aktuellen Übernahme zählen nie (auch nicht aus einer PDF, die noch daliegt)
+  const z = A.mitErgebnisDatei(eigen, datei, aktuell, () => false, nr);
+  Object.assign(D, { messungen: z.messungen, unterschiede: z.unterschiede, quelle: z.quelle, konflikte: eigen.konflikte, aktuell, ergebnisseDa: !!datei, uebernommen: datei && datei.uebernommen });
+  const xmlBasis = new Set(xml.map(h => h.name.replace(/\.xml$/i, '').normalize('NFC').toLowerCase()));
+  const fremd = new Map(eigen.fremd.map(f => [A.norm(f.bericht), f]));
+  const liste = new Map(), dazu = b => { const k = A.norm(b.code); if (!k) return; const alt = liste.get(k); liste.set(k, alt ? { ...b, ...alt, quelle: alt.quelle + '+' + b.quelle, datum: alt.datum || b.datum, pdf: alt.pdf || b.pdf } : b); };
+  for (const r of berichte){ const code = tidy(r.bericht) || r.datei, f = fremd.get(A.norm(code)), basis = r.datei.replace(/\.xml$/i, '');
+    dazu({ code, ...A.berichtsFassung(code), vorlaeufig: r.vorlaeufig, datei: r.datei, quelle: 'xml', fremd: f ? f.nr : '', ref: r.auftragsreferenz, pdf: (pdf.find(p => gleichName(p.name.replace(/\.pdf$/i, ''), basis)) || {}).name || '' }); }
+  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht) continue; const pn = SO.projektNr(String(b.auftragsreferenz || '').replace(/^\D*/, '')) || (String(b.auftragsreferenz || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+    dazu({ code: tidy(b.bericht), ...A.berichtsFassung(b.bericht), vorlaeufig: !!b.vorlaeufig, datei: (b.sources && (b.sources.xml || b.sources.pdf)) || '', quelle: 'resultkit', datum: b.datum || '', fremd: pn && nr && pn !== nr ? pn : '', ref: b.auftragsreferenz, pdf: (b.sources && b.sources.pdf) || '' }); }
+  D.berichte = [...liste.values()];
+  D.ersetzt = [...eigen.ersetzt, ...(datei && Array.isArray(datei.ersetzt) ? datei.ersetzt.map(e => e && e.bericht).filter(Boolean) : [])];
+  D.pdfNamen = pdf.map(p => p.name);
+  const vonErgebnis = new Set((datei && aktuell ? datei.berichte : []).map(b => b && b.sources && b.sources.pdf).filter(Boolean).map(n => n.normalize('NFC').toLowerCase()));
+  D.pdfOhneXml = pdf.filter(p => p.tiefe === 0 && !xmlBasis.has(p.name.replace(/\.pdf$/i, '').normalize('NFC').toLowerCase()) && !vonErgebnis.has(p.name.normalize('NFC').toLowerCase())).map(p => p.name);
+  D.auftragsreferenzen = [...berichte.map(b => b.auftragsreferenz), ...(datei ? datei.berichte.map(b => b && b.auftragsreferenz) : [])].filter(Boolean);
+  if (datei && !aktuell) D.hinweise.push('Die ResultKit-Übernahme passt nicht mehr zum Ordner „Laborergebnisse“ – LektorKit prüft gegen die XML im Ordner. In ResultKit „Erneut übernehmen“.');
+  if (!berichte.length && !datei) D.hinweise.push('Keine lesbaren Prüfberichte (XML) und keine ResultKit-Übernahme.');
+  const m = await unterordner(dir, 'Mitteilungen'); D.mitDir = m; D.mitteilungen = [];
+  if (m) for await (const h of m.values()) if (h.kind === 'file' && /\.docx$/i.test(h.name) && !h.name.startsWith('~$')){ const f = await h.getFile(); D.mitteilungen.push({ name: h.name, t: f.lastModified, h }); }
+  const anlage = n => /_Brandgeruch|_PN98/i.test(n);
+  D.mitteilungen.sort((a, b) => anlage(a.name) - anlage(b.name) || /Mitteilung/i.test(b.name) - /Mitteilung/i.test(a.name) || b.t - a.t);
+  return D;
+}
+
+/* ---------- Andere Projekte im Archiv ---------- */
+async function einProjekt(h){
+  const nr = SO.projektNr(h.name); let pj = null;
+  for (const weg of [['_Spektron', '_Projekt.json'], ['_Projekt.json']]){ if (pj) break;
+    try{ let d = h; for (const t of weg.slice(0, -1)) d = await d.getDirectoryHandle(t); const f = await (await d.getFileHandle(weg[weg.length - 1])).getFile();
+      if (f.size > 1024 * 1024) continue; const o = jsonVon(await f.text()); if (o && typeof o === 'object' && !Array.isArray(o)) pj = o; }catch(e){} }
+  return { name: h.name, nr, pj };
+}
+async function andereLesen(archiv, eigen){
+  const dirs = [];
+  for await (const h of archiv.values()) if (h.kind === 'directory' && /^\d{2}\.\d{2,6}(?:[\s_-]|$)/.test(h.name.normalize('NFC').trim()) && !gleichName(h.name, eigen)) dirs.push(h);
+  const out = []; let i = 0, fertig = 0;
+  const arbeiter = async () => { while (i < dirs.length){ const h = dirs[i++]; out.push(await einProjekt(h)); fertig++; if (fertig % 25 === 0) status(`Andere Projekte: ${fertig} von ${dirs.length} gelesen …`); } };
+  await Promise.all(Array.from({ length: 8 }, arbeiter));
+  return out;
+}
+
+/* ---------- „Ist so gewollt“ ---------- */
+async function gewolltOrt(dir, anlegen){
+  if (await SO.istSpektronProjekt(dir)){
+    const sp = await SO.spektronDir(dir, anlegen); if (!sp) return { dir: null, pfad: '_Spektron/LektorKit/' + DATEI };
+    let d = null; try{ d = await sp.getDirectoryHandle('LektorKit', anlegen ? { create: true } : undefined); }catch(e){}
+    return { dir: d, pfad: '_Spektron/LektorKit/' + DATEI };
+  }
+  return { dir: await unterordner(dir, 'Mitteilungen'), pfad: 'Mitteilungen/' + DATEI };   // Vor Spektron: nie „_Spektron“ anlegen
+}
+async function gewolltLesen(dir){
+  const o = await gewolltOrt(dir, false), j = await dateiLesen(o.dir, DATEI);
+  if (!j) return { liste: [], text: null };
+  const x = jsonVon(j.text);
+  if (!x || x.format !== FORMAT || !Array.isArray(x.gewollt)) throw Error(`„${o.pfad}“ hat ein unbekanntes Format – LektorKit überschreibt sie nicht.`);
+  if (x.version > 1) throw Error(`„${o.pfad}“ stammt von einer neueren LektorKit-Fassung.`);
+  return { liste: x.gewollt.filter(g => g && typeof g.schluessel === 'string'), roh: x, text: j.text };
+}
+async function gewolltSchreiben(aendern){
+  const dir = S.dir;
+  if (dir.requestPermission && (await dir.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') throw Error('Ohne Schreibrecht kann LektorKit die Bestätigung nicht vermerken.');
+  const frisch = await gewolltLesen(dir);   // vor dem Schreiben frisch lesen: Bestätigungen von Kollegen bleiben
+  const o = await gewolltOrt(dir, true);
+  if (!o.dir) throw Error('Ordner „Mitteilungen“ fehlt.');
+  const liste = aendern(frisch.liste.slice());
+  const x = { ...(frisch.roh || {}), format: FORMAT, version: 1, hinweis: 'LektorKit: als gewollt bestätigte Stellen in Berichten dieses Projekts. Bitte nicht von Hand ändern.',
+    gewollt: liste, geaendert: new Date().toISOString(), geaendertMit: 'LektorKit ' + K.VERSION };
+  const text = JSON.stringify(x, null, 2) + '\n', fh = await o.dir.getFileHandle(DATEI, { create: true }), w = await fh.createWritable();
+  try{ await w.write(text); await w.close(); }catch(e){ try{ await w.abort(); }catch(_){} throw e; }
+  if (await (await fh.getFile()).text() !== text) throw Error('Kontrolle nach dem Speichern fehlgeschlagen – bitte erneut versuchen.');
+  S.gewollt = liste; S.gewolltPfad = o.pfad;
+}
+async function kuerzelHolen(){
+  try{ const k = localStorage.getItem('lektorkit-kuerzel') || localStorage.getItem('spektron-ich'); if (k) return k; }catch(e){}
+  let personen = [];
+  if (S.archiv){ const j = await dateiLesen(S.archiv, '_Spektron-Mitarbeiter.json'); try{ const o = j && jsonVon(j.text); if (o && Array.isArray(o.personen)) personen = o.personen.filter(p => p && p.ordnerKuerzel); }catch(e){} }
+  const sel = $('selKuerzel'), txt = $('txtKuerzel');
+  sel.innerHTML = personen.map(p => `<option value="${esc(p.ordnerKuerzel)}">${esc(p.ordnerKuerzel)} – ${esc(p.name || '')}</option>`).join('');
+  sel.classList.toggle('versteckt', !personen.length); txt.classList.toggle('versteckt', !!personen.length);
+  const dlg = $('dlgKuerzel'); dlg.returnValue = '';
+  return new Promise(ok => { dlg.onclose = () => { const k = dlg.returnValue === 'ok' ? tidy(personen.length ? sel.value : txt.value) : '';
+    if (k) try{ localStorage.setItem('lektorkit-kuerzel', k); }catch(e){} ok(k); }; dlg.showModal(); });
+}
+async function alsGewollt(id){
+  const m = S.erg.marken[id]; if (!m) return;
+  const kuerzel = await kuerzelHolen(); if (!kuerzel) return;
+  try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== m.schluessel).concat([{ schluessel: m.schluessel, text: m.text, befund: m.befund || m.titel, datei: S.bericht.name, kuerzel, am: new Date().toISOString().slice(0, 10) }]));
+    neuAuswerten(); }
+  catch(e){ meldung('Nicht vermerkt: ' + e.message); }
+}
+async function zuruecknehmen(id){
+  const m = S.erg.marken[id]; if (!m) return;
+  try{ await gewolltSchreiben(l => l.filter(g => g.schluessel !== m.schluessel)); neuAuswerten(); }catch(e){ meldung('Nicht geändert: ' + e.message); }
+}
+
+/* ---------- Ablauf ---------- */
+function status(t){ const e = $('dateiStand'); if (e) e.textContent = t; }
+function meldung(t){ const e = $('meldung'); e.textContent = t; e.classList.toggle('versteckt', !t); if (!$('haupt').classList.contains('versteckt') && t) alertZeile(t); }
+function alertZeile(t){ const u = $('uebersicht'); if (u){ const d = document.createElement('div'); d.className = 'zeile warn'; d.textContent = t; u.prepend(d); } }
+function suiteDb(){ return new Promise((ok, nein) => { const r = indexedDB.open('mosaik-suite', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => nein(r.error); }); }
+async function archivAusSpeicher(){ try{ const db = await suiteDb(); try{ return await new Promise((ok, nein) => { const r = db.transaction('kv').objectStore('kv').get('archiv'); r.onsuccess = () => ok(r.result && typeof r.result.values === 'function' ? r.result : null); r.onerror = () => nein(r.error); }); } finally { db.close(); } }catch(e){ return null; } }
+const recht = async (h, fragen) => { if (!h.queryPermission) return true; let p = await h.queryPermission({ mode: 'read' }); if (p === 'prompt' && fragen) p = await h.requestPermission({ mode: 'read' }); return p === 'granted'; };
+
+async function oeffnen(dir, archiv, wunsch){
+  S.dir = dir; S.archiv = archiv || null; S.andere = null; S.andereStatus = '';
+  meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
+  S.daten = await projektLesen(dir);
+  try{ const g = await gewolltLesen(dir); S.gewollt = g.liste; S.gewolltFehler = ''; }catch(e){ S.gewollt = []; S.gewolltFehler = e.message; }
+  const pj = S.daten.pj || {};
+  $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>${esc([pj.schadennummer ? 'Schaden-Nr. ' + tidy(pj.schadennummer).replace(/\n/g, ', ') : '', pj.zustaendig && pj.zustaendig.kuerzel ? 'Zuständig: ' + pj.zustaendig.kuerzel : ''].filter(Boolean).join(' · '))}</span>`;
+  const sel = $('selBericht');
+  sel.innerHTML = S.daten.mitteilungen.map((x, i) => `<option value="${i}">${esc(x.name)}</option>`).join('') || '<option value="">– keine Word-Datei in „Mitteilungen“ –</option>';
+  if (wunsch){ const i = S.daten.mitteilungen.findIndex(x => gleichName('Mitteilungen/' + x.name, wunsch) || gleichName(x.name, wunsch)); if (i >= 0) sel.value = String(i); }
+  $('berichtWahl').classList.remove('versteckt'); $('btnFreigeben').classList.add('versteckt');
+  if (S.archiv) andereVorbereiten();
+  else S.andereStatus = 'fehlt';
+  if (wunsch && S.daten.mitteilungen.length) await lesen();
+}
+async function andereVorbereiten(){
+  S.andereStatus = 'laeuft';
+  try{ if (!(await recht(S.archiv, false))) { S.andereStatus = 'fehlt'; return; }
+    const liste = await andereLesen(S.archiv, S.dir.name); S.andere = K.andereIndex(liste, S.daten.projekt.nr); S.andereStatus = 'ok'; }
+  catch(e){ S.andereStatus = 'fehler'; S.andereFehler = e.message; }
+  if (S.doc) neuAuswerten();
+}
+async function lesen(datei){
+  let bytes, name, quelle;
+  if (datei){ bytes = await datei.arrayBuffer(); name = datei.name; quelle = 'abgelegt'; }
+  else { const x = S.daten.mitteilungen[Number($('selBericht').value)]; if (!x) return; const f = await x.h.getFile(); bytes = await f.arrayBuffer(); name = x.name; quelle = 'Mitteilungen'; }
+  try{ S.doc = await K.docxLesen(bytes); }catch(e){ meldung(`„${name}“ lässt sich nicht lesen: ${e.message}`); return; }
+  S.bericht = { name, quelle, datei: datei || null }; S.gelesenAm = new Date(); S.gewaehlt = null;
+  $('start').classList.add('versteckt'); $('haupt').classList.remove('versteckt'); $('fuss').classList.remove('versteckt');
+  neuAuswerten();
+}
+function neuAuswerten(){
+  if (!S.doc) return;
+  S.erg = K.analysieren(S.doc, { ...S.daten, andere: S.andereStatus === 'ok' ? S.andere : null, gewollt: S.gewollt });
+  zeichnen();
+}
+
+/* ---------- Zeichnen ---------- */
+const ort0 = () => S.doc && S.doc.bloecke.some(b => b.ueb && /^1\.?\s/.test(b.seg.text.trim())) ? 'Deckblatt' : 'Anfang';
+const ICONS = {
+  ok: '<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l6.3 11.3H1.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 6.5v3.4M8 11.6v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  x: '<svg class="ic" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' };
+const STATUS_NAME = { belegt: 'belegt', abweicht: 'weicht ab', fremd: 'anderes Projekt', ohne: 'ohne Beleg' };
+function segHtml(seg, jeSeg){
+  const ms = jeSeg.get(seg.id) || [], t = seg.text; let out = '', pos = 0;
+  const txt = s => esc(s).replace(/\t+/g, ' ').replace(/\n/g, '<br>');
+  for (const m of ms){ if (m.von < pos) continue; out += txt(t.slice(pos, m.von));
+    const kl = m.gewollt ? 'gewollt' : m.status, ic = ICONS[m.icon] || '';
+    out += `<span class="m ${kl}" data-id="${m.id}" tabindex="0" role="button" aria-label="${esc(STATUS_NAME[m.status] + (m.gewollt ? ', als gewollt bestätigt' : '') + ': ' + m.text)}">${txt(m.text)}${ic}</span>`; pos = m.bis; }
+  return out + txt(t.slice(pos));
+}
+function zeichnen(){
+  const e = S.erg, jeSeg = new Map();
+  for (const m of e.marken) jeSeg.set(m.seg, [...(jeSeg.get(m.seg) || []), m]);
+  let h = '', abschnitt = null;
+  for (const b of S.doc.bloecke){
+    if (b.typ === 'p'){ if (!b.seg.text.trim()) continue;
+      h += `<p class="${b.kopf ? 'kopfz' : b.ueb ? 'ueb' : ''}">${segHtml(b.seg, jeSeg)}</p>`; }
+    else h += '<table>' + b.zeilen.map(z => '<tr>' + z.map(s => `<td>${segHtml(s, jeSeg)}</td>`).join('') + '</tr>').join('') + '</table>';
+  }
+  $('seite').innerHTML = h;
+  $('dateiName').textContent = S.bericht.name + (S.bericht.quelle === 'abgelegt' ? ' (abgelegt, nicht im Projektordner gespeichert)' : '');
+  status(`gelesen ${S.gelesenAm.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} · LektorKit ${K.VERSION}`);
+  uebersichtZeichnen(); befundeZeichnen();
+  if (S.gewaehlt != null) belegZeigen(S.gewaehlt, false); else $('belegKarte').classList.add('versteckt');
+  protokollBauen();
+}
+function zeilenListe(){
+  const e = S.erg, z = [], np = e.nichtPruefbar.reduce((s, x) => s + x.n, 0);
+  if (np) z.push(['warn', `⚠ ${np} ${np === 1 ? 'Angabe' : 'Angaben'} nicht prüfbar – weder belegt noch geprüft: ${e.nichtPruefbar.map(x => `${x.n} × ${x.grund}`).join('; ')}.`]);
+  if (S.andereStatus === 'ok') z.push(['info', `Andere Projekte: ${S.andere.gelesen} gelesen – ${S.andere.voll} mit Projektdaten, ${S.andere.nurName} nur über den Ordnernamen (dort nur die Projektnummer und eine Adresse mit Hausnummer im Namen).`]);
+  else if (S.andereStatus === 'laeuft') z.push(['info', 'Andere Projekte werden noch gelesen …']);
+  else z.push(['warn', `⚠ Andere Projekte nicht geprüft – ${S.andereStatus === 'fehler' ? 'Archiv nicht lesbar: ' + (S.andereFehler || '') : 'kein Zugriff auf den Archivordner (aus der Projektzentrale öffnen)'}.`]);
+  for (const t of S.daten.hinweise) z.push(['info', t]);
+  if (S.gewolltFehler) z.push(['warn', '⚠ ' + S.gewolltFehler]);
+  return z;
+}
+function kopfzeile(){
+  const z = S.erg.zaehler, offen = z.abweicht + z.fremd, np = S.erg.nichtPruefbar.reduce((s, x) => s + x.n, 0);
+  const keine = z.gewollt ? `Keine offene Abweichung (${z.gewollt} als gewollt bestätigt)` : 'Keine Abweichung gefunden';
+  if (offen) return `${offen} ${offen === 1 ? 'Stelle' : 'Stellen'} ansehen, bevor du fertigstellst`;
+  if (np) return `${keine} – aber ${np} ${np === 1 ? 'Angabe' : 'Angaben'} nicht prüfbar`;
+  if (S.andereStatus !== 'ok') return `${keine} – andere Projekte nicht geprüft`;
+  return keine;
+}
+function uebersichtZeichnen(){
+  const z = S.erg.zaehler;
+  $('uebersicht').innerHTML = `<h2 id="kopfzeile">${esc(kopfzeile())}</h2>
+   <div class="kacheln">
+    <div class="kachel k-ok"><b id="z-belegt">${z.belegt}</b><span>Angaben belegt</span></div>
+    <div class="kachel k-ab"><b id="z-abweicht">${z.abweicht}</b><span>weichen ab</span></div>
+    <div class="kachel k-fr"><b id="z-fremd">${z.fremd}</b><span>aus anderem Projekt</span></div>
+    <div class="kachel k-ob"><b id="z-ohne">${z.ohne}</b><span>ohne Beleg</span></div>
+   </div>${z.gewollt ? `<div class="klein">${z.gewollt} als gewollt bestätigt</div>` : ''}
+   ${zeilenListe().map(([k, t]) => `<div class="zeile ${k}">${esc(t)}</div>`).join('')}`;
+}
+function befundKarte(m){
+  const kat = (m.status === 'fremd' ? 'ANDERES PROJEKT' : 'WEICHT AB') + ' · ' + (m.abschnitt || ort0());
+  const g = m.gewollt;
+  return `<div class="karte befund ${g ? 'gewollt' : m.status}" data-befund="${m.id}">
+   <div class="kat">${esc(g ? 'GEWOLLT · ' + (m.abschnitt || ort0()) : kat)}</div>
+   <div class="titel">${esc(m.befund || m.titel)}</div>
+   ${m.notiz ? `<div class="klein">${esc(m.notiz)}</div>` : ''}
+   ${g ? `<div class="klein">Bestätigt von ${esc(g.kuerzel)} am ${esc(K.deDatum(g.am))}</div>` : ''}
+   <div class="knoepfe"><button data-zeigen="${m.id}">Im Bericht zeigen</button>${g ? `<button data-zurueck="${m.id}">Zurücknehmen</button>` : `<button data-gewollt="${m.id}">Ist so gewollt</button>`}</div></div>`;
+}
+function befundeZeichnen(){
+  const offen = S.erg.marken.filter(m => (m.status === 'abweicht' || m.status === 'fremd') && !m.gewollt), gewollt = S.erg.marken.filter(m => m.gewollt);
+  $('befunde').innerHTML = offen.map(befundKarte).join('') + gewollt.map(befundKarte).join('');
+}
+function belegZeigen(id, scroll){
+  const m = S.erg.marken[id]; if (!m) return;
+  S.gewaehlt = id;
+  document.querySelectorAll('.m.gewaehlt').forEach(x => x.classList.remove('gewaehlt'));
+  const el = document.querySelector(`#seite .m[data-id="${id}"]`); if (el){ el.classList.add('gewaehlt'); if (scroll){ el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('blink'); void el.offsetWidth; el.classList.add('blink'); } }
+  const k = $('belegKarte'), st = m.gewollt ? 'gewollt' : m.status;
+  k.className = 'karte beleg ' + m.status;
+  k.innerHTML = `<div class="kat befund" style="font-size:12px;font-weight:700;letter-spacing:.04em">${esc((m.gewollt ? 'GEWOLLT' : STATUS_NAME[m.status].toUpperCase()) + ' · ' + (m.abschnitt || ort0()))}</div>
+   <div style="font-size:20px;font-weight:700">${esc(m.titel)}</div>
+   ${m.befund ? `<div class="titel" style="font-weight:600">${esc(m.befund)}</div>` : ''}
+   ${(m.beleg || []).length ? `<dl>${m.beleg.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>` : ''}
+   ${m.notiz ? `<div class="klein">${esc(m.notiz)}</div>` : ''}
+   <div class="klein">Stelle im Bericht: ${esc(m.abschnitt === 'Kopfzeile' ? 'Kopfzeile' : m.abschnitt ? 'Abschnitt ' + m.abschnitt : ort0())} – Seitenzahlen kennt nur Word.</div>
+   <div class="knoepfe">${m.pdf ? `<button data-pdf="${esc(m.pdf)}">Prüfbericht öffnen</button>` : ''}${(m.status === 'abweicht' || m.status === 'fremd') ? (m.gewollt ? `<button data-zurueck="${m.id}">Zurücknehmen</button>` : `<button data-gewollt="${m.id}">Ist so gewollt</button>`) : ''}<button data-schliessen="1">Schließen</button></div>`;
+  k.classList.remove('versteckt'); void st;
+}
+async function pdfOeffnen(name){
+  const p = (S.daten.pdfHandles || []).find(x => gleichName(x.name, name)); if (!p){ meldung(`„${name}“ liegt nicht in „Laborergebnisse“.`); return; }
+  const url = URL.createObjectURL(await p.h.getFile()); window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/* ---------- Prüfprotokoll (eine Seite) ---------- */
+function protokollBauen(){
+  const e = S.erg, z = e.zaehler, pj = S.daten.pj || {}, MAX = 24;
+  const liste = e.marken.filter(m => m.status === 'abweicht' || m.status === 'fremd');
+  const zeile = m => `<tr><td>${esc(m.abschnitt || ort0())}</td><td>${esc(m.text)}</td><td>${esc(m.befund || m.titel)}${m.notiz ? ' – ' + esc(m.notiz) : ''}</td><td>${m.status === 'fremd' ? 'anderes Projekt' : 'weicht ab'}</td><td>${m.gewollt ? `gewollt (${esc(m.gewollt.kuerzel)}, ${esc(K.deDatum(m.gewollt.am))})` : 'offen'}</td></tr>`;
+  $('protokoll').innerHTML = `<h1>Prüfprotokoll LektorKit</h1>
+   <div>${esc(S.daten.projekt.name)}${pj.schadennummer ? ' · Schaden-Nr. ' + esc(tidy(pj.schadennummer).replace(/\n/g, ', ')) : ''}</div>
+   <div>Bericht: ${esc(S.bericht.name)}${S.bericht.quelle === 'abgelegt' ? ' (abgelegt)' : ''} · gelesen ${esc(S.gelesenAm.toLocaleString('de-DE'))} · LektorKit ${K.VERSION}</div>
+   <p><b>${esc(kopfzeile())}</b> – belegt ${z.belegt} · weicht ab ${z.abweicht} · anderes Projekt ${z.fremd} · ohne Beleg ${z.ohne} · als gewollt bestätigt ${z.gewollt}</p>
+   ${zeilenListe().filter(x => x[0] === 'warn').map(([, t]) => `<div class="p-warn">${esc(t)}</div>`).join('')}
+   ${liste.length ? `<table><tr><th>Abschnitt</th><th>Im Text</th><th>Befund</th><th>Art</th><th>Stand</th></tr>${liste.slice(0, MAX).map(zeile).join('')}</table>${liste.length > MAX ? `<div>… und ${liste.length - MAX} weitere – siehe LektorKit.</div>` : ''}` : '<p>Keine Stelle weicht ab, keine stammt aus einem anderen Projekt.</p>'}
+   <div style="font-size:8pt;margin-top:2mm">„ohne Beleg“ = eigene Angabe des Sachverständigen oder nicht sicher einer Probe zuzuordnen – kein Fehler. LektorKit liest nur; am Bericht wurde nichts geändert.</div>
+   <div class="p-unter"><div>Geprüft: ____________________</div><div>Datum: ____________</div></div>`;
+}
+
+/* ---------- Ereignisse ---------- */
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-id],[data-zeigen],[data-gewollt],[data-zurueck],[data-pdf],[data-schliessen]'); if (!t) return;
+  if (t.dataset.zeigen) belegZeigen(Number(t.dataset.zeigen), true);
+  else if (t.dataset.gewollt) alsGewollt(Number(t.dataset.gewollt));
+  else if (t.dataset.zurueck) zuruecknehmen(Number(t.dataset.zurueck));
+  else if (t.dataset.pdf) pdfOeffnen(t.dataset.pdf);
+  else if (t.dataset.schliessen){ S.gewaehlt = null; $('belegKarte').classList.add('versteckt'); document.querySelectorAll('.m.gewaehlt').forEach(x => x.classList.remove('gewaehlt')); }
+  else if (t.dataset.id && t.closest('#seite')) belegZeigen(Number(t.dataset.id), false);
+});
+document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.classList && ev.target.classList.contains('m') && ev.target.closest('#seite')){ ev.preventDefault(); belegZeigen(Number(ev.target.dataset.id), false); } });
+$('btnProjekt').onclick = async () => {
+  if (!window.showDirectoryPicker){ meldung('Dieser Browser kann keine Ordner öffnen. Bitte Edge oder Chrome benutzen.'); return; }
+  let dir; try{ dir = await window.showDirectoryPicker({ mode: 'read', id: 'lektorkit' }); }catch(e){ return; }
+  // Liegt der Ordner im Archiv der Suite, gehört der Archivordner dazu (für „anderes Projekt“)
+  let archiv = await archivAusSpeicher();
+  if (archiv){ try{ const weg = await archiv.resolve(dir); if (!weg || weg.length !== 1) archiv = null; }catch(e){ archiv = null; } }
+  await oeffnen(dir, archiv);
+};
+$('btnLesen').onclick = () => lesen();
+$('btnNeu').onclick = async () => { const d = S.bericht && S.bericht.datei, name = S.bericht && S.bericht.name; await oeffnen(S.dir, S.archiv); if (d) await lesen(d); else { const i = S.daten.mitteilungen.findIndex(x => x.name === name); if (i >= 0) $('selBericht').value = String(i); await lesen(); } };
+$('btnAndererBericht').onclick = () => { $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); };
+$('btnDrucken').onclick = () => { protokollBauen(); window.print(); };
+$('btnDatei').onclick = () => $('eingabeDatei').click();
+$('eingabeDatei').onchange = ev => { const f = ev.target.files[0]; if (f) lesen(f); ev.target.value = ''; };
+const ab = $('ablage');
+ab.addEventListener('dragover', ev => { ev.preventDefault(); ab.classList.add('drueber'); });
+ab.addEventListener('dragleave', () => ab.classList.remove('drueber'));
+ab.addEventListener('drop', ev => { ev.preventDefault(); ab.classList.remove('drueber'); const f = [...ev.dataTransfer.files].find(x => /\.docx$/i.test(x.name)); if (f) lesen(f); else meldung('Bitte eine Word-Datei (.docx) ablegen.'); });
+
+/* ---------- Aufruf aus der Projektzentrale: #projekt=<Ordnername>[&datei=Mitteilungen/<Datei>] ---------- */
+async function sprung(){
+  const h = new URLSearchParams(location.hash.slice(1)), projekt = h.get('projekt'); if (!projekt) return;
+  const archiv = await archivAusSpeicher();
+  if (!archiv){ meldung('Kein Archivordner gespeichert – bitte einmal die Projektzentrale öffnen oder „Projektordner öffnen …“.'); return; }
+  const weiter = async () => { let dir = null; for await (const x of archiv.values()) if (x.kind === 'directory' && gleichName(x.name, projekt)){ dir = x; break; }
+    if (!dir){ meldung(`Das Projekt „${projekt}“ liegt nicht im Archivordner „${archiv.name}“.`); return; }
+    await oeffnen(dir, archiv, h.get('datei') || ''); };
+  if (await recht(archiv, false)) return weiter();
+  const b = $('btnFreigeben'); b.textContent = `Projekt „${projekt}“ öffnen`; b.classList.remove('versteckt');
+  b.onclick = async () => { if (await recht(archiv, true)) weiter(); };
+}
+sprung();
+
+/* Für die Prüfungen (tests/lektorkit-check.cjs): dieselben Wege wie die Knöpfe, ohne Dateidialog. */
+window.LektorKitTest = { oeffnen, lesen, zustand: () => S, warteAndere: async () => { while (S.andereStatus === 'laeuft') await new Promise(r => setTimeout(r, 20)); } };
+})();
+</script>
+</body>
+</html>
