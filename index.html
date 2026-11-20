@@ -87,7 +87,7 @@ dialog input{font:inherit;min-height:40px;border-radius:8px;border:1px solid var
   <div class="marke">LektorKit<span id="version"></span></div>
   <div id="projektKopf"></div>
  </div>
- <div class="klein">liest den Bericht gegen die Projektdaten – ändert nichts</div>
+ <div class="klein">liest den Bericht gegen die Projektdaten – ändert nichts · <a id="lnkRueck" href="../rueckmeldung/?app=lektorkit" target="rueckmeldung" rel="noopener" title="Fehler oder Wunsch melden – öffnet das Rückmeldeformular, Programm, Version und Projektnummer sind schon eingetragen">Fehler oder Wunsch melden ↗</a></div>
 </header>
 
 <section id="start">
@@ -605,8 +605,14 @@ root.SpektronOrdner = api;
     const t = tidy(bericht).replace(/[‐-―−]/g, '-').replace(/\s+/g, '').toUpperCase(), m = /^(.*[^-])-(\d{2})$/.exec(t);
     return m ? { grund: m[1], fassung: Number(m[2]) } : { grund: t, fassung: null };
   }
-  /** Projektnummer „26.0142“ aus einer Auftragsreferenz (wie ResultKit). */
-  const projektnummer = s => (String(s || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+  /* ===== PROJEKTNUMMER v1 – in ResultKit (src/labreport.ts), Projektzentrale (archiv/auswertung.js) und PlanKit (src/labreport.ts) gleich halten =====
+     Projektnummern „26.0142“ in einer Auftragsreferenz (Freitext im Eurofins-Portal). Ein Datum ist nie eine Projektnummer: in „18.11.2026“
+     steht „11.2026“ direkt hinter „18.“ und zählt nicht (Audit Lauf 2, B3, Entscheidung 20.11.2026). Stehen mehrere Nummern da, gilt die des
+     Projekts; sonst die erste (→ anderes Projekt). Keine Nummer → '' (kein Projektbezug, wie bisher). */
+  const PROJEKTNUMMER = /(?<!\d)(?<!\d\.)\d{2}\.\d{3,6}(?!\d)/g;
+  const projektnummern = text => [...String(text ?? '').matchAll(PROJEKTNUMMER)].map(m => m[0]);
+  function projektnummerIn(text, projekt = ''){ const l = projektnummern(text); return projekt && l.includes(projekt) ? projekt : l[0] || ''; }
+  /* ===== Ende PROJEKTNUMMER v1 ===== */
 
   /** Ein Messwert wie in der Auswertung (probe = Labornummer, sonst Referenz – Schlüssel der Rollen-Korrekturen). */
   function messung(b, pr, w, key){
@@ -630,7 +636,7 @@ root.SpektronOrdner = api;
     }
     const liste = [...nachCode.values()].map(b => ({ b, ...(tidy(b.bericht) ? berichtsFassung(b.bericht) : { grund: '?' + b.datei, fassung: null }) }));
     const fremd = [];
-    for (const x of liste){ const nr = projektnummer(x.b.auftragsreferenz); if (projektNr && nr && nr !== projektNr){ x.fremd = nr;
+    for (const x of liste){ const nr = projektnummerIn(x.b.auftragsreferenz, projektNr); if (projektNr && nr && nr !== projektNr){ x.fremd = nr;
       fremd.push({ bericht: tidy(x.b.bericht) || x.b.datei, nr, ref: tidy(x.b.auftragsreferenz), n: (x.b.proben || []).reduce((s, pr) => s + (pr.werte || []).length, 0) }); } }
     const besser = (a, b) => (a.b.vorlaeufig ? 0 : 1) - (b.b.vorlaeufig ? 0 : 1) || (a.fassung ?? -1) - (b.fassung ?? -1) || (a.b.geaendert || 0) - (b.b.geaendert || 0);
     const kandidaten = new Map();
@@ -660,7 +666,7 @@ root.SpektronOrdner = api;
   /** Werte aus ResultKits „_Ergebnisse.json“ (berichte[].proben[].werte) als Map key → Messung. pdf: Bericht ohne XML (nur aus der PDF gelesen). */
   function ergebnisWerte(datei, projektNr){
     const m = new Map();
-    for (const b of Array.isArray(datei && datei.berichte) ? datei.berichte : []) if (!(projektNr && projektnummer(b && b.auftragsreferenz) && projektnummer(b.auftragsreferenz) !== projektNr)) for (const pr of Array.isArray(b && b.proben) ? b.proben : [])
+    for (const b of Array.isArray(datei && datei.berichte) ? datei.berichte : []) if (!(projektNr && projektnummerIn(b && b.auftragsreferenz, projektNr) && projektnummerIn(b.auftragsreferenz, projektNr) !== projektNr)) for (const pr of Array.isArray(b && b.proben) ? b.proben : [])
       for (const w of Array.isArray(pr && pr.werte) ? pr.werte : []){ if (!w || !tidy(w.p) || !tidy(w.r)) continue;
         const k = wertKey(pr, w), x = { ...messung(b, pr, w, k), pdf: !(b.sources && b.sources.xml), pdfName: (b.sources && b.sources.pdf) || '' }, alt = m.get(k);
         // ab 1.3.1 (o41): mehrere Werte je Schlüssel (Übernahme vor ResultKit 2.5 mit -01 neben -02 in anderer Einheit, oder ein
@@ -821,7 +827,7 @@ root.SpektronOrdner = api;
       .map(r => r.map(zelle).join(';')).join('\r\n') + '\r\n';
   }
 
-  const api = Object.freeze({ zahl, ergebnis, einheit, PAK16, pakIndex, QUOTIENTEN, QUELLE, MIN_N, projektKopf, projektMessungen, projektAuswerten, ergebnisWerte, mitErgebnisDatei, berichtsFassung, probeLabel, zaehlt, unterBG, statistik, parameterListe, profile, medianProfil, csv, norm, tidy,
+  const api = Object.freeze({ zahl, ergebnis, einheit, PAK16, pakIndex, QUOTIENTEN, QUELLE, MIN_N, projektKopf, projektMessungen, projektAuswerten, ergebnisWerte, mitErgebnisDatei, berichtsFassung, projektnummern, projektnummerIn, probeLabel, zaehlt, unterBG, statistik, parameterListe, profile, medianProfil, csv, norm, tidy,
     ROLLEN, ROLLE_NAME, rolleAuto, rolleWirksam, bkSicht, berichtkitRollen, standKennung, freiBasis, berlinTag, tageNachBrand, tageKlasse, gemeinsam, aufMenge, kosinus, medianVektor });
   root.ArchivAuswertung = api;
   if (typeof module !== 'undefined') module.exports = api;
@@ -1007,7 +1013,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = api;
 'use strict';
 const A = root.ArchivAuswertung, R = root.LektorRegeln;
 const tidy = A.tidy;
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
@@ -1611,6 +1617,9 @@ const tidy = A.tidy;
 const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
 const S = { lesenLauf: 0, oeffnenLauf: 0, andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
 $('version').textContent = ' ' + K.VERSION;
+/** Rückmeldung (Audit Lauf 4, D3): wie TeamKit 0.5.1, dazu die Projektnummer des offenen Projekts (nur die Nummer, kein Ort – wie die Leiste). */
+function rueckLink(nr){ $('lnkRueck').href = '../rueckmeldung/?app=lektorkit&version=' + encodeURIComponent(K.VERSION) + (nr ? '&projekt=' + encodeURIComponent(nr) : ''); }
+rueckLink('');
 
 /* ---------- Ordner ---------- */
 const gleichName = (a, b) => a.normalize('NFC').toLowerCase() === b.normalize('NFC').toLowerCase();
@@ -1663,7 +1672,7 @@ async function projektLesen(dir){
   // Aus _Ergebnisse.json nur Berichte, deren Datei noch in „Laborergebnisse“ liegt – oder alle, wenn die Übernahme aktuell ist
   // (Codex, PR #1: eine alte Übernahme mit einer inzwischen gelöschten -02 macht -01 sonst fälschlich „überholt“)
   const obenNamen = new Set(oben.map(x => x.name.normalize('NFC').toLowerCase())), liegtDa = n => !!n && obenNamen.has(String(n).normalize('NFC').toLowerCase());
-  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht || !(aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))) continue; const pn = SO.projektNr(String(b.auftragsreferenz || '').replace(/^\D*/, '')) || (String(b.auftragsreferenz || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht || !(aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))) continue; const pn = A.projektnummerIn(b.auftragsreferenz, nr);   // Regel PROJEKTNUMMER v1 der Projektzentrale (ein Datum ist keine Projektnummer) – Audit Lauf 4, D1
     dazu({ code: tidy(b.bericht), ...A.berichtsFassung(b.bericht), vorlaeufig: !!b.vorlaeufig, datei: (b.sources && (b.sources.xml || b.sources.pdf)) || '', quelle: 'resultkit', datum: b.datum || '', fremd: pn && nr && pn !== nr ? pn : '', ref: b.auftragsreferenz, pdf: (b.sources && b.sources.pdf) || '' }); }
   D.berichte = [...liste.values()];
   D.ersetzt = [...eigen.ersetzt, ...(datei && aktuell && Array.isArray(datei.ersetzt) ? datei.ersetzt.map(e => e && e.bericht).filter(Boolean) : [])];
@@ -1777,6 +1786,7 @@ async function oeffnen(dir, archiv, wunsch){
   S.andereLauf++; S.lesenLauf++; S.doc = null; S.erg = null; S.bericht = null; S.gewaehlt = null; S.laedt = true;   // solange: kein Bericht lesbar (Codex, PR #1)
   $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); $('berichtWahl').classList.add('versteckt');
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
+  rueckLink(SO.projektNr(dir.name));
   let daten;
   try{ daten = await projektLesen(dir); }
   catch(e){ if (!veraltet()){ S.dir = null; S.daten = null; S.archiv = null; S.laedt = false; $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>nicht lesbar</span>`;

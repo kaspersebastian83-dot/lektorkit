@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 3 * * *'   # nachts: meldet, wenn sich die Originale in Projektzentrale/ResultKit/BerichtKit geändert haben (Audit Lauf 4, D2)
   workflow_dispatch:
 
 permissions:
@@ -37,7 +39,7 @@ jobs:
           npm install --no-save --no-package-lock --prefix "$RUNNER_TEMP/pw" playwright@1.56.1
           echo "NODE_PATH=$RUNNER_TEMP/pw/node_modules" >> "$GITHUB_ENV"
           "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
-      - name: Prüfungen a–k
+      - name: Prüfungen a–m
         run: node tests/lektorkit-check.cjs alle
       - name: Bildschirmfotos bei Fehlschlag
         if: failure()

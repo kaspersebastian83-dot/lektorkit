@@ -77,14 +77,14 @@ const ANDERE = {
   '99.7000 Kasernenstr. 9 Weitweg Tst': {},   // nur Ordnername, mit Hausnummer im Namen
 };
 /** Dateien eines Projekts: { pfad: Inhalt }. erg ohne Stand – den setzt der Browser nach dem Anlegen (wie ResultKit). */
-function br1Dateien({ docx = BR1_DOCX, xml = true, erg = true, pdf = true, extraXml = {} } = {}){
+function br1Dateien({ docx = BR1_DOCX, xml = true, erg = true, pdf = true, extraXml = {}, ref = '' } = {}){
   const d = { '_Spektron/_Projekt.json': BR1.pj, '_Spektron/LabelKit/99.9002_Daten.json': BR1.lk, ['Mitteilungen/' + BERICHT]: docx, 'Mitteilungen/99-9002_Anlage_Brandgeruch_2026-10-21.docx': docxVonHand(['Anlage']) };
   for (const b of BR1.erg.berichte){
-    if (xml) d['Laborergebnisse/' + b.bericht + '.xml'] = euroXml(b.bericht, { proben: b.proben.map(p => ({ ref: p.ref, labNr: p.labNr, werte: p.werte })) });
+    if (xml) d['Laborergebnisse/' + b.bericht + '.xml'] = euroXml(b.bericht, { ...(ref ? { ref } : {}), proben: b.proben.map(p => ({ ref: p.ref, labNr: p.labNr, werte: p.werte })) });
     if (pdf) d['Laborergebnisse/' + b.bericht + '.pdf'] = '%PDF-1.4 erfunden';
   }
   Object.assign(d, extraXml);
-  if (erg) d['_Spektron/ResultKit/_Ergebnisse.json'] = { ...BR1.erg, uebernommen: '2026-10-21T08:00:00.000Z', vollstaendig: true, stand: '@STAND@', dateien: [] };
+  if (erg) d['_Spektron/ResultKit/_Ergebnisse.json'] = { ...BR1.erg, ...(ref ? { berichte: BR1.erg.berichte.map(b => ({ ...b, auftragsreferenz: ref })) } : {}), uebernommen: '2026-10-21T08:00:00.000Z', vollstaendig: true, stand: '@STAND@', dateien: [] };
   return d;
 }
 
@@ -329,6 +329,26 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     await schuss('j-nicht-pruefbar');
   });
 
+  await fall('m', 'Datum in der Auftragsreferenz ist keine Projektnummer (Audit Lauf 4, D1; Regel PROJEKTNUMMER v1 wie ResultKit/Datenarchiv)', async () => {
+    // „Ortstermin 14.10.2026“: „10.2026“ steht direkt hinter „14.“ – kein anderes Projekt. Mit XML im Ordner und nur über die aktuelle ResultKit-Übernahme (PDF ohne XML).
+    for (const ref of ['Ortstermin 14.10.2026 Beispielstadt', 'PN 14.10.2026 / 99.9002'])
+      for (const xml of [true, false]){
+        await archivAnlegen({ [BR1.ordner]: br1Dateien({ ref, xml }), ...archivBasis() }, MA);
+        const r = await pruefen(BR1.ordner), wo = `„${ref}“ ${xml ? 'mit XML' : 'nur Übernahme'}`;
+        assert.deepEqual(r.marken.filter(m => /nennt Projekt/.test(m.befund)).map(m => m.befund), [], wo + ': kein „nennt Projekt …“');
+        assert.deepEqual(offen(r), [], wo + ': keine Abweichung erwartet:\n' + zeig(r));
+        assert.equal(r.nichtPruefbar.length, 0, wo + ': nichts nicht prüfbar:\n' + zeig(r));
+        assert.equal(r.kopf, 'Keine Abweichung gefunden', wo);
+        assert.ok(finde(r, 'wert', '2300', 'belegt').length && finde(r, 'pruefbericht', 'AR-999-2026-000101-01', 'belegt').length, wo + ': Wert und Prüfbericht belegt');
+      }
+    // Rückmeldung (D3): Programm, Version und nur die Projektnummer
+    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.1&projekt=99.9002');
+    assert.equal(await page.getAttribute('#lnkRueck', 'target'), 'rueckmeldung');
+    // Gegenprobe: eine echte fremde Projektnummer bleibt „anderes Projekt“
+    await archivAnlegen({ [BR1.ordner]: br1Dateien({ ref: 'Ortstermin 14.10.2026 / 99.9001' }), ...archivBasis() }, MA);
+    const g = await pruefen(BR1.ordner);
+    assert.ok(g.marken.some(m => /nennt Projekt 99\.9001/.test(m.befund)), 'fremde Nummer hinter dem Datum: „nennt Projekt 99.9001“:\n' + zeig(g));
+  });
   await fall('l', 'Codex PR #1: fehlender Bericht im Link, alte Übernahme mit gelöschter -02', async () => {
     // alte Übernahme (Stand passt nicht) nennt -02 und führt -01 als ersetzt – im Ordner liegt aber nur noch -01
     const b = BR1.erg.berichte[0], neu = b.bericht.replace(/-01$/, '-02'), d = br1Dateien();
