@@ -4,7 +4,13 @@ Der Gegenleser der Spektron-Suite: liest einen Brandbericht (Word) und hält jed
 
 ![Vorschau](docs/vorschau.png)
 
-Aktuelle Version: **1.0.0** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+Aktuelle Version: **1.0.1** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+
+## Neu in 1.0.1 (20.11.2026, Audit Lauf 4)
+
+- **Datum in der Auftragsreferenz ist keine Projektnummer** (D1): „Ortstermin 14.10.2026 …“ machte den eigenen Prüfbericht bisher zu „nennt Projekt 10.2026“ – seine Werte zählten nicht. Jetzt gilt die Regel PROJEKTNUMMER v1 wie in ResultKit 2.6, PlanKit 2.6 und dem Datenarchiv 1.3.2: Kopien aus der Projektzentrale 1.51.2 neu eingebettet, und die Berichte aus `_Ergebnisse.json` nehmen dieselbe Funktion (`projektnummerIn`) statt einer eigenen Kopie. Prüfung m.
+- **Nächtliche Prüfung** (D2): Die CI läuft auch nachts – ändert sich ein Original in Projektzentrale, ResultKit oder BerichtKit, meldet Prüfung a das am nächsten Morgen.
+- **Fehler oder Wunsch melden ↗** oben rechts (D3): öffnet die Rückmeldung mit Programm, Version und der Projektnummer des offenen Projekts (ohne Ort).
 
 ## Benutzen
 
@@ -65,7 +71,7 @@ Eine Datei `index.html`, offline, ohne Abhängigkeiten. Bearbeitet wird in `src/
 ## Prüfen
 
 ```sh
-NODE_PATH=<node_modules mit playwright> node tests/lektorkit-check.cjs alle      # a–k, Chromium headless, ca. 1 min
+NODE_PATH=<node_modules mit playwright> node tests/lektorkit-check.cjs alle      # a–m, Chromium headless, ca. 1 min
 node tests/lektorkit-check.cjs vorschau                                          # docs/vorschau.png neu
 node tests/vorlage-berichtkit.cjs ../berichtkit                                  # Vorlage neu erzeugen (erzeugt, nicht von Hand ändern)
 ```

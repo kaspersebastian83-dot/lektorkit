@@ -10,6 +10,9 @@ const tidy = A.tidy;
 const DATEI = '_LektorKit.json', FORMAT = 'spektron-lektorkit';
 const S = { lesenLauf: 0, oeffnenLauf: 0, andereLauf: 0, archiv: null, dir: null, daten: null, bericht: null, doc: null, erg: null, gewaehlt: null, andere: null, andereStatus: '', gewollt: [], gewolltFehler: '', gelesenAm: null };
 $('version').textContent = ' ' + K.VERSION;
+/** Rückmeldung (Audit Lauf 4, D3): wie TeamKit 0.5.1, dazu die Projektnummer des offenen Projekts (nur die Nummer, kein Ort – wie die Leiste). */
+function rueckLink(nr){ $('lnkRueck').href = '../rueckmeldung/?app=lektorkit&version=' + encodeURIComponent(K.VERSION) + (nr ? '&projekt=' + encodeURIComponent(nr) : ''); }
+rueckLink('');
 
 /* ---------- Ordner ---------- */
 const gleichName = (a, b) => a.normalize('NFC').toLowerCase() === b.normalize('NFC').toLowerCase();
@@ -62,7 +65,7 @@ async function projektLesen(dir){
   // Aus _Ergebnisse.json nur Berichte, deren Datei noch in „Laborergebnisse“ liegt – oder alle, wenn die Übernahme aktuell ist
   // (Codex, PR #1: eine alte Übernahme mit einer inzwischen gelöschten -02 macht -01 sonst fälschlich „überholt“)
   const obenNamen = new Set(oben.map(x => x.name.normalize('NFC').toLowerCase())), liegtDa = n => !!n && obenNamen.has(String(n).normalize('NFC').toLowerCase());
-  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht || !(aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))) continue; const pn = SO.projektNr(String(b.auftragsreferenz || '').replace(/^\D*/, '')) || (String(b.auftragsreferenz || '').match(/\b\d{2}\.\d{3,6}\b/) || [''])[0];
+  for (const b of datei ? datei.berichte : []){ if (!b || !b.bericht || !(aktuell || liegtDa(b.sources && b.sources.xml) || liegtDa(b.sources && b.sources.pdf))) continue; const pn = A.projektnummerIn(b.auftragsreferenz, nr);   // Regel PROJEKTNUMMER v1 der Projektzentrale (ein Datum ist keine Projektnummer) – Audit Lauf 4, D1
     dazu({ code: tidy(b.bericht), ...A.berichtsFassung(b.bericht), vorlaeufig: !!b.vorlaeufig, datei: (b.sources && (b.sources.xml || b.sources.pdf)) || '', quelle: 'resultkit', datum: b.datum || '', fremd: pn && nr && pn !== nr ? pn : '', ref: b.auftragsreferenz, pdf: (b.sources && b.sources.pdf) || '' }); }
   D.berichte = [...liste.values()];
   D.ersetzt = [...eigen.ersetzt, ...(datei && aktuell && Array.isArray(datei.ersetzt) ? datei.ersetzt.map(e => e && e.bericht).filter(Boolean) : [])];
@@ -176,6 +179,7 @@ async function oeffnen(dir, archiv, wunsch){
   S.andereLauf++; S.lesenLauf++; S.doc = null; S.erg = null; S.bericht = null; S.gewaehlt = null; S.laedt = true;   // solange: kein Bericht lesbar (Codex, PR #1)
   $('haupt').classList.add('versteckt'); $('fuss').classList.add('versteckt'); $('start').classList.remove('versteckt'); $('berichtWahl').classList.add('versteckt');
   meldung(''); $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>wird gelesen …</span>`;
+  rueckLink(SO.projektNr(dir.name));
   let daten;
   try{ daten = await projektLesen(dir); }
   catch(e){ if (!veraltet()){ S.dir = null; S.daten = null; S.archiv = null; S.laedt = false; $('projektKopf').innerHTML = `<b>${esc(dir.name)}</b><span>nicht lesbar</span>`;
