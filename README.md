@@ -4,7 +4,11 @@ Der Gegenleser der Spektron-Suite: liest einen Brandbericht (Word) und hält jed
 
 ![Vorschau](docs/vorschau.png)
 
-Aktuelle Version: **1.0.2** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+Aktuelle Version: **1.0.3** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+
+## Neu in 1.0.3 (21.11.2026, Audit Lauf 5)
+
+- **„💬 Rückmeldung ↗“** oben rechts heißt jetzt wie in allen Spektron-Apps (E8, Entscheidung 4); „Fehler oder Wunsch melden“ steht im Tooltip. Sonst unverändert.
 
 ## Neu in 1.0.2 (21.11.2026, Audit Lauf 4)
 
