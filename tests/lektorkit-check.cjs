@@ -164,7 +164,7 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const rk = vm.runInNewContext(`const tidy=(s)=>${tidyTs};${bk};beschreibungKey`);
     const BG = require(path.join(BK, 'bericht-gemeinsam.js'));
     const proben = ['EG Küche , Wand', '„EG“ – Küche', 'OG  WZ REF Wand', 'SZ, KiZ,,HWR', 'Bodenaufbau SZ Unterseite', 'EG Flur Wand, Tiefe: 0–2 mm', '  Lager\tWand ', 'TRHaus', 'GZ-Bad', '',
-      'EG-WZ-B-7-T2', 'EG-KZ-B-7-T1', 'EG-TH-A-3', '1OG-KIZ-C-12a', 'F-DG-SZ-BO-2', 'WZ Wand, Bohrkern EG-WZ-B-7-T2 (WZ)', 'EG-WZ-B-7-T2/EG-SZ-A-1, TRH', 'EG-WZ Wand', 'EG-KiZ-B-7'];
+      'EG-WZ-B-7-T2', 'EG-KZ-B-7-T1', 'EG-TH-A-3', '1OG-KIZ-C-12a', 'F-DG-SZ-BO-2', 'WZ Wand, Bohrkern EG-WZ-B-7-T2 (WZ)', 'EG-WZ-B-7-T2/EG-SZ-A-1, TRH', 'EG-WZ Wand', 'EG-KiZ-B-7', 'EG-WZ-B-7-T2-T3', 'EG-WZ-B-7-T2 – Wand'];
     for (const s of proben){ assert.equal(L.beschreibungKey(s), rk(s), 'beschreibungKey: ' + s); assert.equal(JSON.stringify(L.raumAusschreiben(s)), JSON.stringify(BG.raumAusschreiben(s)), 'raumAusschreiben: ' + s); }
     assert.equal(JSON.stringify(L.RAUM_KUERZEL), JSON.stringify(BG.RAUM_KUERZEL));
     const BW = await import(path.join(RK, 'src', 'bewertung.ts'));

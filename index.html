@@ -978,7 +978,7 @@ const RAUM_KUERZEL = { SZ: 'Schlafzimmer', WZ: 'Wohnzimmer', KiZ: 'Kinderzimmer'
   HWR: 'Hauswirtschaftsraum', TRH: 'Treppenhaus' };
 const RAUM_RE = new RegExp(`(?<![\\p{L}\\p{N}])(${Object.keys(RAUM_KUERZEL).join('|')})(?![\\p{L}\\p{N}])`, 'gu');
 /* Kern-IDs (Bohrkerne, „EG-WZ-B-7-T2“) bleiben unberührt – auch alte mit KZ/TH (BerichtKit 1.20.1, Audit Lauf 4 D14; Muster wie AidKit konventionen.js). */
-const KERN_ID_RE = /(?<![\p{L}\p{N}-])(?:F-)?(?:REF-\d{1,2}|(?:KG|UG|EG|[1-9]OG|DG)-[A-Z]{2,3}[1-9]?-(?:[A-H]|BO|DE)-[1-9]\d?[a-z]?)(?:-T[1-9])?(?![\p{L}\p{N}])/gu;
+const KERN_ID_RE = /(?<![\p{L}\p{N}-])(?:F-)?(?:REF-\d{1,2}|(?:KG|UG|EG|[1-9]OG|DG)-[A-Z]{2,3}[1-9]?-(?:[A-H]|BO|DE)-[1-9]\d?[a-z]?)(?:-T[1-9])?(?![\p{L}\p{N}-])/gu;
 function raumAusschreiben(v) {
   const ersetzt = [], roh = s(v), teil = t => t.replace(RAUM_RE, k => { ersetzt.push(k); return RAUM_KUERZEL[k]; });
   let text = '', ab = 0;
