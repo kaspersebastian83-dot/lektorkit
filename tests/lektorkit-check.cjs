@@ -163,7 +163,8 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     const tidyTs = /const tidy=\(s:unknown\)=>([^;]+);/.exec(erg)[1];
     const rk = vm.runInNewContext(`const tidy=(s)=>${tidyTs};${bk};beschreibungKey`);
     const BG = require(path.join(BK, 'bericht-gemeinsam.js'));
-    const proben = ['EG Küche , Wand', '„EG“ – Küche', 'OG  WZ REF Wand', 'SZ, KiZ,,HWR', 'Bodenaufbau SZ Unterseite', 'EG Flur Wand, Tiefe: 0–2 mm', '  Lager\tWand ', 'TRHaus', 'GZ-Bad', ''];
+    const proben = ['EG Küche , Wand', '„EG“ – Küche', 'OG  WZ REF Wand', 'SZ, KiZ,,HWR', 'Bodenaufbau SZ Unterseite', 'EG Flur Wand, Tiefe: 0–2 mm', '  Lager\tWand ', 'TRHaus', 'GZ-Bad', '',
+      'EG-WZ-B-7-T2', 'EG-KZ-B-7-T1', 'EG-TH-A-3', '1OG-KIZ-C-12a', 'F-DG-SZ-BO-2', 'WZ Wand, Bohrkern EG-WZ-B-7-T2 (WZ)', 'EG-WZ-B-7-T2/EG-SZ-A-1, TRH', 'EG-WZ Wand', 'EG-KiZ-B-7', 'EG-WZ-B-7-T2-T3', 'EG-WZ-B-7-T2 – Wand'];
     for (const s of proben){ assert.equal(L.beschreibungKey(s), rk(s), 'beschreibungKey: ' + s); assert.equal(JSON.stringify(L.raumAusschreiben(s)), JSON.stringify(BG.raumAusschreiben(s)), 'raumAusschreiben: ' + s); }
     assert.equal(JSON.stringify(L.RAUM_KUERZEL), JSON.stringify(BG.RAUM_KUERZEL));
     const BW = await import(path.join(RK, 'src', 'bewertung.ts'));
@@ -342,7 +343,7 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
         assert.ok(finde(r, 'wert', '2300', 'belegt').length && finde(r, 'pruefbericht', 'AR-999-2026-000101-01', 'belegt').length, wo + ': Wert und Prüfbericht belegt');
       }
     // Rückmeldung (D3): Programm, Version und nur die Projektnummer
-    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.1&projekt=99.9002');
+    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.2&projekt=99.9002');
     assert.equal(await page.getAttribute('#lnkRueck', 'target'), 'rueckmeldung');
     // Gegenprobe: eine echte fremde Projektnummer bleibt „anderes Projekt“
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ ref: 'Ortstermin 14.10.2026 / 99.9001' }), ...archivBasis() }, MA);

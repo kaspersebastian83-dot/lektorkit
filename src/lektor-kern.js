@@ -12,7 +12,7 @@
 'use strict';
 const A = root.ArchivAuswertung, R = root.LektorRegeln;
 const tidy = A.tidy;
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
