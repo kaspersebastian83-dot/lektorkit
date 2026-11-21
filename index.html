@@ -977,10 +977,13 @@ const s = v => (v == null ? '' : String(v)).trim();
 const RAUM_KUERZEL = { SZ: 'Schlafzimmer', WZ: 'Wohnzimmer', KiZ: 'Kinderzimmer', GZ: 'Gästezimmer',
   HWR: 'Hauswirtschaftsraum', TRH: 'Treppenhaus' };
 const RAUM_RE = new RegExp(`(?<![\\p{L}\\p{N}])(${Object.keys(RAUM_KUERZEL).join('|')})(?![\\p{L}\\p{N}])`, 'gu');
+/* Kern-IDs (Bohrkerne, „EG-WZ-B-7-T2“) bleiben unberührt – auch alte mit KZ/TH (BerichtKit 1.20.1, Audit Lauf 4 D14; Muster wie AidKit konventionen.js). */
+const KERN_ID_RE = /(?<![\p{L}\p{N}-])(?:F-)?(?:REF-\d{1,2}|(?:KG|UG|EG|[1-9]OG|DG)-[A-Z]{2,3}[1-9]?-(?:[A-H]|BO|DE)-[1-9]\d?[a-z]?)(?:-T[1-9])?(?![\p{L}\p{N}])/gu;
 function raumAusschreiben(v) {
-  const ersetzt = [];
-  const text = s(v).replace(RAUM_RE, k => { ersetzt.push(k); return RAUM_KUERZEL[k]; });
-  return { text, ersetzt };
+  const ersetzt = [], roh = s(v), teil = t => t.replace(RAUM_RE, k => { ersetzt.push(k); return RAUM_KUERZEL[k]; });
+  let text = '', ab = 0;
+  for (const m of roh.matchAll(KERN_ID_RE)) { text += teil(roh.slice(ab, m.index)) + m[0]; ab = m.index + m[0].length; }
+  return { text: text + teil(roh.slice(ab)), ersetzt };
 }
 /* ResultKit src/bewertung.ts KORROSION-CHLORID v2: Chlorid je µg/cm² (1 µg/cm² = 10 mg/m²) – die einzige Umrechnung für Chlorid. */
 const CHLORID_JE_UG_CM2 = {'µg/cm2':1,'mg/m2':10,'µg/m2':10000,'mg/cm2':.001,'µg/100cm2':100,'mg/dm2':.1};
@@ -1013,7 +1016,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = api;
 'use strict';
 const A = root.ArchivAuswertung, R = root.LektorRegeln;
 const tidy = A.tidy;
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit

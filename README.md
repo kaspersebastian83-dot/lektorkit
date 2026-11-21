@@ -4,7 +4,11 @@ Der Gegenleser der Spektron-Suite: liest einen Brandbericht (Word) und hält jed
 
 ![Vorschau](docs/vorschau.png)
 
-Aktuelle Version: **1.0.1** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+Aktuelle Version: **1.0.2** (steht oben neben dem Namen). Plan und Entscheidungen: Project-Doc `claude/gegenleser-plan.md` (Arbeitstitel „Gegenleser“).
+
+## Neu in 1.0.2 (21.11.2026, Audit Lauf 4)
+
+- **Kern-IDs bleiben, wie sie sind** (D14): Die Kopie von BerichtKits Raumkürzel-Regel ist auf BerichtKit 1.20.1 erneuert – „EG-WZ-B-7-T2“ wird nicht mehr zu „EG-Wohnzimmer-B-7-T2“, auch alte IDs mit KZ/TH und neue mit KIZ/TRH bleiben. Prüfung a vergleicht jetzt auch Kern-IDs und Text mit Kern-IDs.
 
 ## Neu in 1.0.1 (20.11.2026, Audit Lauf 4)
 
