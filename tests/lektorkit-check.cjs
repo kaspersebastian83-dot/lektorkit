@@ -343,7 +343,10 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
         assert.ok(finde(r, 'wert', '2300', 'belegt').length && finde(r, 'pruefbericht', 'AR-999-2026-000101-01', 'belegt').length, wo + ': Wert und Prüfbericht belegt');
       }
     // Rückmeldung (D3): Programm, Version und nur die Projektnummer
-    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.2&projekt=99.9002');
+    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.3&projekt=99.9002');
+    // E8 (Audit Lauf 5, Entscheidung 4): ein Wort für alle Apps, „Fehler oder Wunsch melden“ im Tooltip
+    assert.equal(await page.textContent('#lnkRueck'), '💬 Rückmeldung ↗');
+    assert.match(await page.getAttribute('#lnkRueck', 'title'), /^Fehler oder Wunsch melden – /);
     assert.equal(await page.getAttribute('#lnkRueck', 'target'), 'rueckmeldung');
     // Gegenprobe: eine echte fremde Projektnummer bleibt „anderes Projekt“
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ ref: 'Ortstermin 14.10.2026 / 99.9001' }), ...archivBasis() }, MA);
