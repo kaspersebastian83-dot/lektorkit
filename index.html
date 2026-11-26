@@ -1016,7 +1016,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = api;
 'use strict';
 const A = root.ArchivAuswertung, R = root.LektorRegeln;
 const tidy = A.tidy;
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 
 /* ---------- Word lesen ---------- */
 /** Text eines Absatzes (auch in Tabellenzellen): Läufe in Dokumentreihenfolge; Tab, Zeilenumbruch, geschützter Bindestrich (BerichtKit
@@ -1312,7 +1312,10 @@ function analysieren(doc, d){
   };
   /* --- Probe: gibt es sie? Raum: passt er? --- */
   const probeInfo = (n, bg) => {
-    if (bg){ const e = P.lkp.brandgeruch.find(x => x.nr === n); return e ? { da: true, bg: true, text: [tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', '), zeile: `Brandgeruch-Probe ${n} · ${[tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', ')}` } : { da: false, bg: true }; }
+    if (bg){ const e = P.lkp.brandgeruch.find(x => x.nr === n);
+      // stornierte Brandgeruch-Probe: behält ihren Platz in der Liste (Nr. wie BerichtKit/Projektzentrale), steht aber nicht im Bericht (1.0.4)
+      if (e && e.p && e.p.storniert) return { da: false, bg: true, storniert: true };
+      return e ? { da: true, bg: true, text: [tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', '), zeile: `Brandgeruch-Probe ${n} · ${[tidy(e.p.z1), tidy(e.p.z2)].filter(Boolean).join(', ')}` } : { da: false, bg: true }; }
     const e = P.lkp.nr.get(n), l = 'P' + n;
     if (P.lkp.doppelt.has(n)) return { da: true, doppelt: true, zeile: `P${n} ist in LabelKit doppelt vergeben` };
     if (e) return { da: true, e, zeile: lkZeile(n, e), raum: tidy(e.p.z2) || tidy(e.p.raum) };
@@ -1327,15 +1330,16 @@ function analysieren(doc, d){
     if (i.doppelt){ const g = 'Probennummer in LabelKit doppelt vergeben'; nichtPruefbar.push(g); return neu(seg, von, bis, 'probe', { probe, status: 'ohne', nichtPruefbar: g, titel: `Probe ${n}`, notiz: `Nicht prüfbar: P${n} ist in LabelKit doppelt vergeben – in LabelKit klären.` }); }
     if (i.da) return neu(seg, von, bis, 'probe', { probe, status: 'belegt', titel: bg ? `Brandgeruch-Probe ${n}` : `Probe ${n}`, beleg: [[bg ? 'LabelKit' : (i.ausBericht ? 'Prüfbericht' : 'LabelKit'), i.zeile]] });
     if (!P.lkp.da) return neu(seg, von, bis, 'probe', { probe, status: 'ohne', titel: `Probe ${n}`, notiz: 'Keine LabelKit-Datei dieses Projekts – Probe nicht prüfbar.' });
-    if (i.storniert) return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: `Probe ${n}`, befund: `P${n} ist in LabelKit storniert`, notiz: 'Im Text steht sie trotzdem.' });
+    if (i.storniert) return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: bg ? `Brandgeruch-Probe ${n}` : `Probe ${n}`, befund: bg ? `Brandgeruch-Probe ${n} ist in LabelKit storniert` : `P${n} ist in LabelKit storniert`, notiz: 'Im Text steht sie trotzdem.' });
     return neu(seg, von, bis, 'probe', { probe, status: 'abweicht', titel: `Probe ${n}`, befund: bg ? `Brandgeruch-Probe ${n} gibt es in LabelKit nicht` : `Probe ${n} gibt es in diesem Projekt nicht`, notiz: bg ? `LabelKit hat ${P.lkp.brandgeruch.length} Brandgeruch-Proben.` : 'Weder in LabelKit noch in einem Prüfbericht.' });
   };
-  const raumMarke = (seg, von, bis, n, bg) => {
+  // zeilen: ein Zeilenumbruch in der Zelle trennt wie ein Komma (Anlage der Projektzentrale: „z1↵z2“, BerichtKit: „z1, z2“)
+  const raumMarke = (seg, von, bis, n, bg, zeilen) => {
     const roh = seg.text.slice(von, bis), t = roh.replace(/,\s*Tiefe\b.*$/i, '').trim();
     if (!t || /^(Material|Referenz|Freimessung|vorläufig)\b/i.test(t) || /^(?:\p{L}*probe|P)\s*\d/iu.test(t) || !frei(seg, von, von + t.length)) return;   // „(Probe 1, Probe 2)“: keine Stelle
     const i = probeInfo(n, bg); if (!i.da || i.doppelt) return;
     const soll = bg ? i.text : i.raum; if (!soll) return;
-    const k = R.beschreibungKey(t), ok = [soll, R.raumAusschreiben(soll).text].some(x => R.beschreibungKey(x) === k);
+    const k = R.beschreibungKey(zeilen ? t.replace(/\s*\n\s*/g, ', ') : t), ok = [soll, R.raumAusschreiben(soll).text].some(x => R.beschreibungKey(x) === k);
     const probe = (bg ? 'B' : 'P') + n, quelle = bg || !i.ausBericht ? 'LabelKit' : 'Prüfbericht';
     if (ok) return neu(seg, von, von + t.length, 'raum', { probe, status: 'belegt', titel: `Entnahmestelle ${bg ? 'Brandgeruch-Probe ' : 'P'}${n}`, beleg: [[quelle, i.zeile]] });
     const anders = bg ? null : [...P.lkp.nr].find(([m, e]) => m !== n && [tidy(e.p.z2), R.raumAusschreiben(e.p.z2).text].some(x => R.beschreibungKey(x) === k));
@@ -1378,9 +1382,21 @@ function analysieren(doc, d){
   for (const s of doc.segs){ const m = /^\s*Anlage\s+(\d{1,2})\s*:\s*([\s\S]*)$/.exec(s.text); if (m) anlagenListe.set(Number(m[1]), { text: tidy(m[2]), seg: s.id }); }
 
   /* --- Tabellen (BerichtKit-Ergebnistabellen und ähnlich gebaute) --- */
-  const tabSegs = new Set();
+  const tabSegs = new Set(), bgZellen = new Set();
   for (const b of doc.bloecke){ if (b.typ !== 'tab' || b.zeilen.length < 2) continue;
     const kopf = b.zeilen[0].map(s => tidy(s.text)), sp = re => kopf.findIndex(k => re.test(k));
+    // Brandgeruch-Tabelle (BerichtKit 5.6 ab 1.23.0, Anlage der Projektzentrale): Kopf „Nr.“ und mindestens eine Spalte „Person n“ –
+    // am Kopf erkannt, nicht an der Überschrift. „Nr.“ = Brandgeruch-Probe, „Probe“ = Beschreibung (z1, z2), „Person n“ = Bewertungen (1.0.4)
+    const iNr = sp(/^Nr\.?$/i), iPers = kopf.map((k, i) => /^Person\s*\d+$/i.test(k) ? i : -1).filter(i => i >= 0);
+    if (iNr >= 0 && iPers.length){ const iB = sp(/^Probe\b/i);
+      for (const z of b.zeilen.slice(1)){
+        // diese Zellen liest der allgemeine Durchlauf nicht: keine Probennummer aus der Beschreibung, keine Bewertung als Messwert oder Probe
+        for (const i of [iNr, iB, ...iPers]) if (i >= 0 && z[i]) bgZellen.add(z[i].id);
+        const nm = z[iNr] && /^\s*(?:(?:Probe|P)\s*)?(\d{1,4})\b/i.exec(z[iNr].text); if (!nm) continue; const n = Number(nm[1]);
+        probeMarke(z[iNr], nm.index + nm[0].length - nm[1].length, nm.index + nm[0].length, n, true);
+        if (iB >= 0 && z[iB]){ const t = z[iB].text, a = t.length - t.trimStart().length; raumMarke(z[iB], a, t.trimEnd().length, n, true, true); }
+      }
+      continue; }
     const iP = sp(/^Probe\b/i); if (iP < 0) continue;
     const iL = sp(/^Labor-?\s?Nr/i), iS = sp(/^(Entnahmestelle|Probenahmestelle|Stelle|Raum)/i);
     // jede Wertspalte („Chlorid [µg/cm²]“, „Σ 16 EPA-PAK [µg/m²]“) – nicht nur die erste (Codex, PR #1)
@@ -1399,7 +1415,7 @@ function analysieren(doc, d){
 
   /* --- Absätze und übrige Zellen --- */
   for (const seg of doc.segs){
-    const text = seg.text; if (!text.trim() || seg.leer) continue;
+    const text = seg.text; if (!text.trim() || seg.leer || bgZellen.has(seg.id)) continue;
     const bg = istBrandgeruch(seg), inTab = tabSegs.has(seg.id);
     for (const sz of saetze(text)){
       const satz = text.slice(sz.von, sz.bis);

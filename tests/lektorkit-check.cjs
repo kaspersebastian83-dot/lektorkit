@@ -15,6 +15,9 @@
 //  k  Prüfprotokoll: eine Seite
 //  l  Codex-Befunde PR #1: fehlender Bericht (Link, neu einlesen) → nichts lesen; alte Übernahme mit gelöschter -02 macht -01 nicht
 //     „überholt“; zwei Projekte schnell nacheinander → das letzte gilt; doppelte Kopftabelle nur einmal
+//  m  Datum in der Auftragsreferenz ist keine Projektnummer
+//  n  Brandgeruch-Tabelle (BerichtKit 5.6 ab 1.23.0, Anlage der Projektzentrale): „Nr.“ = Brandgeruch-Probe, „Probe“ = Beschreibung,
+//     „Person n“ nie Probe oder Messwert; am Kopf erkannt, auch ohne Brandgeruch-Überschrift; andere Tabellen wie bisher
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http'), zlib = require('node:zlib'), assert = require('node:assert/strict');
 const ROOT = path.join(__dirname, '..'), OUT = path.join(__dirname, 'out');
 const NACHBAR = (env, name) => path.resolve(process.env[env] || path.join(ROOT, '..', name));
@@ -55,9 +58,20 @@ const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 /** Von Hand geschriebener Bericht: nur Absätze (Zeilen), ohne Tabellen, Kopfzeilen und BerichtKit-Aufbau. */
 function docxVonHand(zeilen){
   const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-  const body = zeilen.map(z => `<w:p><w:r><w:t xml:space="preserve">${xmlEsc(z)}</w:t></w:r></w:p>`).join('');
+  const body = zeilen.map(z => typeof z === 'string' ? `<w:p><w:r><w:t xml:space="preserve">${xmlEsc(z)}</w:t></w:r></w:p>` : tabXml(z.tab)).join('');
   return zipSchreiben({ '[Content_Types].xml': '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
     'word/document.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${body}</w:body></w:document>` });
+}
+/** Word-Tabelle: zeilen = [[Zelle]], Zelle = Text oder [Absatz, Absatz] (mehrere Absätze in einer Zelle, wie die Anlage der Projektzentrale „z1↵z2“). */
+const tabXml = zeilen => '<w:tbl><w:tblPr><w:tblW w:type="dxa" w:w="9070"/></w:tblPr>' + zeilen.map(z => '<w:tr>' + z.map(c => '<w:tc>' +
+  (Array.isArray(c) ? c : [c]).map(a => `<w:p><w:r><w:t xml:space="preserve">${xmlEsc(a)}</w:t></w:r></w:p>`).join('') + '</w:tc>').join('') + '</w:tr>').join('') + '</w:tbl>';
+const BG_KOPF = ['Nr.', 'Probe', 'Person 1', 'Person 2', 'Person 3', 'Person 4', 'Person 5'];
+/** BR1-Bericht mit Brandgeruch-Tabelle wie BerichtKit 1.23.0 in 5.6 (nach dem Ergebnis-Absatz, vor dem Schluss-Satz). */
+function mitBgTabelle(buf, zeilen){
+  const t = zipLesen(buf), x = t['word/document.xml'].toString('utf8'), i = x.lastIndexOf('<w:p>', x.indexOf('Die Einzelbewertungen der Prüfpersonen'));
+  assert.ok(i > 0, 'Schluss-Satz 5.6 nicht gefunden');
+  t['word/document.xml'] = Buffer.from(x.slice(0, i) + '<w:p><w:r><w:t xml:space="preserve">Tabelle 4: Sensorische Prüfung auf Brandgeruch – Einzelbewertungen der Prüfpersonen</w:t></w:r></w:p>' + tabXml([BG_KOPF, ...zeilen]) + x.slice(i));
+  return zipSchreiben(t);
 }
 /** Eurofins-XML (AnalyticalReport), so weit xmlLesen sie liest. */
 function euroXml(code, { vorlaeufig = false, ref = '99.9002 Beispielstadt', proben }){
@@ -77,8 +91,8 @@ const ANDERE = {
   '99.7000 Kasernenstr. 9 Weitweg Tst': {},   // nur Ordnername, mit Hausnummer im Namen
 };
 /** Dateien eines Projekts: { pfad: Inhalt }. erg ohne Stand – den setzt der Browser nach dem Anlegen (wie ResultKit). */
-function br1Dateien({ docx = BR1_DOCX, xml = true, erg = true, pdf = true, extraXml = {}, ref = '' } = {}){
-  const d = { '_Spektron/_Projekt.json': BR1.pj, '_Spektron/LabelKit/99.9002_Daten.json': BR1.lk, ['Mitteilungen/' + BERICHT]: docx, 'Mitteilungen/99-9002_Anlage_Brandgeruch_2026-10-21.docx': docxVonHand(['Anlage']) };
+function br1Dateien({ docx = BR1_DOCX, xml = true, erg = true, pdf = true, extraXml = {}, ref = '', lk = BR1.lk } = {}){
+  const d = { '_Spektron/_Projekt.json': BR1.pj, '_Spektron/LabelKit/99.9002_Daten.json': lk, ['Mitteilungen/' + BERICHT]: docx, 'Mitteilungen/99-9002_Anlage_Brandgeruch_2026-10-21.docx': docxVonHand(['Anlage']) };
   for (const b of BR1.erg.berichte){
     if (xml) d['Laborergebnisse/' + b.bericht + '.xml'] = euroXml(b.bericht, { ...(ref ? { ref } : {}), proben: b.proben.map(p => ({ ref: p.ref, labNr: p.labNr, werte: p.werte })) });
     if (pdf) d['Laborergebnisse/' + b.bericht + '.pdf'] = '%PDF-1.4 erfunden';
@@ -343,7 +357,7 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
         assert.ok(finde(r, 'wert', '2300', 'belegt').length && finde(r, 'pruefbericht', 'AR-999-2026-000101-01', 'belegt').length, wo + ': Wert und Prüfbericht belegt');
       }
     // Rückmeldung (D3): Programm, Version und nur die Projektnummer
-    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.3&projekt=99.9002');
+    assert.equal(await page.getAttribute('#lnkRueck', 'href'), '../rueckmeldung/?app=lektorkit&version=1.0.4&projekt=99.9002');
     // E8 (Audit Lauf 5, Entscheidung 4): ein Wort für alle Apps, „Fehler oder Wunsch melden“ im Tooltip
     assert.equal(await page.textContent('#lnkRueck'), '💬 Rückmeldung ↗');
     assert.match(await page.getAttribute('#lnkRueck', 'title'), /^Fehler oder Wunsch melden – /);
@@ -352,6 +366,50 @@ const schuss = async name => { fs.mkdirSync(OUT, { recursive: true }); await pag
     await archivAnlegen({ [BR1.ordner]: br1Dateien({ ref: 'Ortstermin 14.10.2026 / 99.9001' }), ...archivBasis() }, MA);
     const g = await pruefen(BR1.ordner);
     assert.ok(g.marken.some(m => /nennt Projekt 99\.9001/.test(m.befund)), 'fremde Nummer hinter dem Datum: „nennt Projekt 99.9001“:\n' + zeig(g));
+  });
+  await fall('n', 'Brandgeruch-Tabelle: „Nr.“ ist die Probe, „Probe“ die Beschreibung, Bewertungen nie Probe oder Messwert (1.0.4)', async () => {
+    // erfundene LabelKit-Brandgeruch-Proben: Beschreibungen mit führender Zahl („1. OG …“, „47 Sessel“), Probe 4 storniert (behält ihren Platz)
+    const lk = { ...BR1.lk, brandgeruchProben: [...BR1.lk.brandgeruchProben,
+      { id: 3, z1: '1. OG Wohnzimmer', z2: 'Sofa', p1: '+', p2: '+', p3: '++', p4: '+', p5: '+' },
+      { id: 4, z1: 'Sessel Flur', z2: 'Leder', p1: '+', p2: '+', p3: '+', p4: '+', p5: '+', storniert: true },
+      { id: 5, z1: '47 Sessel', z2: 'Wohnzimmer', p1: '(+)', p2: '-', p3: '(+)', p4: '-', p5: '(+)' }] };
+    const zeile = (nr, beschr, p = ['+', '+', '++', '+', '+']) => [nr, beschr, ...p];
+    const in56 = r => r.marken.filter(m => m.abschnitt === '5.6');
+    // 1) Tabelle wie BerichtKit 1.23.0 (stornierte Probe 4 fehlt, Nummern = Platz in der LabelKit-Liste): alles passt, keine falsche Marke
+    let docx = mitBgTabelle(BR1_DOCX, [zeile('1', 'Sofa Wohnzimmer, Stoffbezug'), zeile('2', 'Teppich Flur, Wolle', ['(+)', '–', '(+)', '–', '(+)']),
+      zeile('3', '1. OG Wohnzimmer, Sofa'), zeile('5', '47 Sessel, Wohnzimmer', ['(+)', '–', '(+)', '–', '(+)'])]);
+    await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx, lk }), ...archivBasis() }, MA);
+    let r = await pruefen(BR1.ordner);
+    assert.deepEqual(offen(r), [], 'keine Abweichung erwartet:\n' + zeig(r));
+    assert.equal(r.kopf, 'Keine Abweichung gefunden');
+    for (const [nr, b] of [['1', 'B1'], ['2', 'B2'], ['3', 'B3'], ['5', 'B5']])
+      assert.ok(in56(r).some(m => m.art === 'probe' && m.text === nr && m.probe === b && m.status === 'belegt'), `Nr. ${nr} → ${b} belegt:\n` + in56(r).map(m => `${m.status} ${m.art} „${m.text}“ ${m.probe}`).join('\n'));
+    for (const [t, b] of [['1. OG Wohnzimmer, Sofa', 'B3'], ['47 Sessel, Wohnzimmer', 'B5'], ['Teppich Flur, Wolle', 'B2']])
+      assert.equal(finde(r, 'raum', t).filter(m => m.abschnitt === '5.6' && m.probe === b && m.status === 'belegt').length, t === 'Teppich Flur, Wolle' ? 2 : 1, `Beschreibung „${t}“ gegen LabelKit belegt (Satz und Tabelle)`);
+    assert.deepEqual(in56(r).filter(m => /^P\d/.test(m.probe)).map(m => `${m.art} „${m.text}“ ${m.probe}`), [], 'in 5.6 keine normale Probennummer (P1, P47) aus der Beschreibung');
+    assert.deepEqual(in56(r).filter(m => /^(?:\+\+|\+|\(\+\)|–|-)$/.test(m.text)), [], 'Bewertungen ohne Marke');
+    // 2) Nr. nicht in LabelKit, stornierte Probe, falsche Beschreibung; Bewertungszellen mit Zahl/Einheit oder „P2“ werden nicht gelesen
+    docx = mitBgTabelle(BR1_DOCX, [zeile('1', 'Sofa Wohnzimmer, Stoffbezug', ['+', '12,3 µg/cm²', 'P2', '+', '+']), zeile('3', '1. OG Küche, Sofa'),
+      zeile('4', 'Sessel Flur, Leder'), zeile('9', '9 Kissen, Wohnzimmer')]);
+    await archivAnlegen({ [BR1.ordner]: br1Dateien({ docx, lk }), ...archivBasis() }, MA);
+    r = await pruefen(BR1.ordner);
+    const a = offen(r), was = a.map(m => `${m.art} „${m.text}“ ${m.befund}`).sort();
+    assert.deepEqual(was, ['probe „4“ Brandgeruch-Probe 4 ist in LabelKit storniert', 'probe „9“ Brandgeruch-Probe 9 gibt es in LabelKit nicht',
+      'raum „1. OG Küche, Sofa“ Brandgeruch-Probe 3 heißt in LabelKit „1. OG Wohnzimmer, Sofa“'], zeig(r));
+    assert.deepEqual(finde(r, 'wert', '12,3 µg/cm²').map(m => m.status).sort(), ['belegt', 'ohne'], 'Bewertungszelle „12,3 µg/cm²“ ist kein Messwert (nur die zwei Stellen aus Prüfung b)');
+    assert.deepEqual(in56(r).filter(m => m.text === 'P2' || /^P\d/.test(m.probe)).map(m => m.text), [], 'Bewertungszelle „P2“ und Beschreibung „9 Kissen“ sind keine Probe');
+    // 3) am Kopf erkannt, nicht an der Überschrift: dieselbe Tabelle wie in der Anlage der Projektzentrale (Beschreibung „z1↵z2“) in einem
+    //    Bericht ohne Abschnitt „Brandgeruch“; eine Tabelle mit „Nr.“, „Probe“ und Wertspalte, aber ohne „Person n“ bleibt wie bisher
+    const hand = docxVonHand(['Anlage zum Bericht', { tab: [BG_KOPF, ['1', ['Sofa Wohnzimmer', 'Stoffbezug'], '+', '+', '++', '+', '+'], ['3', ['1. OG Wohnzimmer', 'Sofa'], '+', '+', '++', '+', '+'],
+      ['5', ['47 Sessel', 'Wohnzimmer'], '(+)', '-', '(+)', '-', '(+)']] }, 'Ergebnisse', { tab: [['Nr.', 'Probe', 'Chlorid [µg/cm²]'], ['1', '1', '12,3']] }]);
+    await archivAnlegen({ [BR1.ordner]: { ...br1Dateien({ lk }), 'Mitteilungen/Anlage_von_Hand.docx': hand }, ...archivBasis() }, MA);
+    r = await pruefen(BR1.ordner, 'Mitteilungen/Anlage_von_Hand.docx');
+    assert.deepEqual(offen(r), [], 'keine Abweichung erwartet:\n' + zeig(r));
+    for (const [nr, b] of [['1', 'B1'], ['3', 'B3'], ['5', 'B5']]) assert.ok(finde(r, 'probe', nr, 'belegt').some(m => m.probe === b), `Nr. ${nr} → ${b} belegt:\n` + zeig(r));
+    for (const t of ['1. OG Wohnzimmer\nSofa', '47 Sessel\nWohnzimmer']) assert.equal(finde(r, 'raum', t, 'belegt').length, 1, `Beschreibung mit Zeilenumbruch „${t}“ belegt:\n` + zeig(r));
+    assert.ok(!r.marken.some(m => m.probe === 'P3' || m.probe === 'P5' || m.probe === 'P47'), 'keine normale Probe aus der Brandgeruch-Tabelle:\n' + zeig(r));
+    assert.ok(r.marken.some(m => m.art === 'probe' && m.probe === 'P1' && m.status === 'belegt'), 'Chlorid-Tabelle: Spalte „Probe“ weiter als Probennummer');
+    assert.ok(finde(r, 'wert', '12,3', 'belegt').some(m => m.probe === 'P1'), 'Chlorid-Tabelle: Wert weiter geprüft:\n' + zeig(r));
   });
   await fall('l', 'Codex PR #1: fehlender Bericht im Link, alte Übernahme mit gelöschter -02', async () => {
     // alte Übernahme (Stand passt nicht) nennt -02 und führt -01 als ersetzt – im Ordner liegt aber nur noch -01
