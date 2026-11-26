@@ -66,9 +66,14 @@ function docxVonHand(zeilen){
 const tabXml = zeilen => '<w:tbl><w:tblPr><w:tblW w:type="dxa" w:w="9070"/></w:tblPr>' + zeilen.map(z => '<w:tr>' + z.map(c => '<w:tc>' +
   (Array.isArray(c) ? c : [c]).map(a => `<w:p><w:r><w:t xml:space="preserve">${xmlEsc(a)}</w:t></w:r></w:p>`).join('') + '</w:tc>').join('') + '</w:tr>').join('') + '</w:tbl>';
 const BG_KOPF = ['Nr.', 'Probe', 'Person 1', 'Person 2', 'Person 3', 'Person 4', 'Person 5'];
-/** BR1-Bericht mit Brandgeruch-Tabelle wie BerichtKit 1.23.0 in 5.6 (nach dem Ergebnis-Absatz, vor dem Schluss-Satz). */
+/** BR1-Bericht mit Brandgeruch-Tabelle wie BerichtKit 1.23.0 in 5.6 (nach dem Ergebnis-Absatz, vor dem Schluss-Satz).
+ *  Die Vorlage ab BerichtKit 1.23.0 hat dort schon BerichtKits eigene Tabelle (Überschrift + Tabelle) – die wird ersetzt, nicht verdoppelt. */
 function mitBgTabelle(buf, zeilen){
-  const t = zipLesen(buf), x = t['word/document.xml'].toString('utf8'), i = x.lastIndexOf('<w:p>', x.indexOf('Die Einzelbewertungen der Prüfpersonen'));
+  const t = zipLesen(buf);
+  let x = t['word/document.xml'].toString('utf8');
+  const u = x.indexOf('Tabelle 4: Sensorische Prüfung auf Brandgeruch');
+  if (u > 0){ const s = x.lastIndexOf('<w:p>', u), e = x.indexOf('</w:tbl>', u) + '</w:tbl>'.length; assert.ok(s > 0 && e > u, 'Brandgeruch-Tabelle der Vorlage nicht abgegrenzt'); x = x.slice(0, s) + x.slice(e); }
+  const i = x.lastIndexOf('<w:p>', x.indexOf('Die Einzelbewertungen der Prüfpersonen'));
   assert.ok(i > 0, 'Schluss-Satz 5.6 nicht gefunden');
   t['word/document.xml'] = Buffer.from(x.slice(0, i) + '<w:p><w:r><w:t xml:space="preserve">Tabelle 4: Sensorische Prüfung auf Brandgeruch – Einzelbewertungen der Prüfpersonen</w:t></w:r></w:p>' + tabXml([BG_KOPF, ...zeilen]) + x.slice(i));
   return zipSchreiben(t);
